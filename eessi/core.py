@@ -8,7 +8,7 @@ import os
 import sys
 
 from eessi.infrastructure import Infrastructure
-from eessi.tools import ARCHITECTURES, NODE_TYPES
+from eessi.tools import ARCHITECTURES, NODE_TYPES, set_terraform_env
 from eessi.tools import destroy_infrastructure
 
 # TODO:
@@ -32,13 +32,15 @@ def required_environment_keys_are_set(keys):
     return True
 
 def main():
-    mode = 'test'
+    mode = 'small'
     parser = argparse.ArgumentParser(description='Create EESSI infrastructure.',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--architectures', dest='architectures', choices=ARCHITECTURES, nargs='+',
                         default=ARCHITECTURES, help='Pick what architectures to work on.')
     parser.add_argument('--dry-run', dest='dryrun', action='store_const',
                         const=True, help='Dry run, show what would be done.')
+    parser.add_argument('--public', dest='public', action='store_const',
+                        const=True, help='Allow public access to nodes. Normally only initiating host has access.')
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--create-only', dest='create_only', choices=NODE_TYPES,
@@ -59,11 +61,17 @@ def main():
         parser.print_help()
         sys.exit(1)
 
+    is_public = False
+    if args.public:
+        is_public = True
 
-    i = Infrastructure(mode, args.architectures)
+    if args.create_only:
+        mode = args.create_only
 
+    if args.compat or args.software or args.stack:
+        mode = 'large'
 
-
+    i = Infrastructure(mode, is_public, args.architectures)
 
     if args.create_only:
         if args.dryrun:
@@ -74,13 +82,10 @@ def main():
         print(i)
     elif args.compat:
         print('compat not implemented')
-        mode = 'build'
     elif args.software:
         print('software not implemented')
-        mode = 'build'
     elif args.stack:
         print('stack not implemented')
-        mode = 'build'
     elif args.status:
         print(i)
     elif args.destroy:

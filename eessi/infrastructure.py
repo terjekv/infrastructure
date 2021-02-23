@@ -6,7 +6,7 @@ Classes for managing EESSI infrastructure
 import os
 
 from eessi.tools import is_acceptable_terraform_command, ensure_terraform_is_initialized
-from eessi.tools import ARCHITECTURES, TERRAFORM_DIRECTORY, TF_ENV_PREFIX
+from eessi.tools import ARCHITECTURES, TERRAFORM_DIRECTORY, TF_ENV_PREFIX, set_terraform_env
 from eessi.tools import execute, destroy_infrastructure, ROOT_DIRECTORY
 from eessi.tools import is_acceptable_architecture, is_acceptable_node_type
 from eessi.state import state
@@ -15,9 +15,10 @@ class Infrastructure:
     """
     Manage the infrastructure.
     """
-    def __init__(self, mode='test', architectures=None):
+    def __init__(self, mode='test', is_public=False, architectures=None):
         self.nodes = []
         self.mode = mode
+        self.is_public = is_public
 
         if not architectures:
             architectures = ARCHITECTURES
@@ -94,9 +95,15 @@ class Infrastructure:
         ensure_terraform_is_initialized()
 
         for node in self.nodes:
-            os.environ["{}_create_{}".format(TF_ENV_PREFIX, node.arch)] = 'true'
+            set_terraform_env("create_{}".format(node.arch), "true")
 
-        os.environ["{}_mode".format(TF_ENV_PREFIX)] = self.mode
+        set_terraform_env("mode", self.mode)
+
+        if os.environ["USER"]:
+            os.environ["{}_localuser".format(TF_ENV_PREFIX)] = os.environ["USER"]
+
+        if self.is_public:
+            os.environ["{}_is_public".format(TF_ENV_PREFIX)] = 'true'
 
         if command == 'apply':
             print("Applying state, please wait...")

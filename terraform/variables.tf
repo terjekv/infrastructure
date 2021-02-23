@@ -6,8 +6,8 @@ variable "mode" {
   type = string
 
   validation {
-    condition = var.mode == "test" || var.mode == "build"
-    error_message = "Set TF_VAR_mode to either 'test' or 'build'."
+    condition = var.mode == "small" || var.mode == "medium" || var.mode == "large"
+    error_message = "Set TF_VAR_mode to 'small', 'medium', or 'large'."
   }
 }
 
@@ -29,6 +29,14 @@ variable "keys" {
   }
 }
 
+variable "localuser" {
+  default = "unknown-user"
+}
+
+variable "is_public" {
+  default = false
+}
+
 variable "create_x86_64" {
   default = false
 }
@@ -41,9 +49,9 @@ variable "instance_aarch64" {
   type = map
 
   default = {
-    test = "t4g.micro"
-    build = "c6g.xlarge"
-#    prod = "c6g.4xlarge"
+    small = "t4g.micro"
+    medium = "c6g.xlarge"
+    large = "c6g.4xlarge"
   }
 }
 
@@ -51,8 +59,8 @@ variable "instance_x86_64" {
   type = map
 
   default = {
-    test = "t2.micro"
-    build = "c5.xlarge"
-#    prod = "c5.4xlarge"
+    small = "t2.micro"
+    medium = "c5.xlarge"
+    large = "c5.4xlarge"
   }
 }

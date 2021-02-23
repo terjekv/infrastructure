@@ -6,7 +6,7 @@ Tools for managing the EESSI infrastructure
 import os
 import subprocess
 
-NODE_TYPES = [ 'build', 'test' ]
+NODE_TYPES = [ 'small', 'medium', 'large' ]
 ARCHITECTURES = [ 'x86_64', 'aarch64', 'power' ]
 TERRAFORM_COMMANDS = [ 'plan', 'apply', 'destroy' ]
 TF_ENV_PREFIX = 'TF_VAR'
@@ -43,8 +43,8 @@ def execute(cmd,print_stdout=False):
     return_code = process.wait()
     (stdout,stderr) = process.communicate()
 
-    if print_stdout:
-        print(stdout)
+#    if print_stdout:
+#        print(stdout)
     if return_code:
         print(stderr)
         raise subprocess.CalledProcessError(return_code, cmd)
@@ -60,13 +60,19 @@ def ensure_terraform_is_initialized(directory='.terraform'):
     if not os.path.isdir(directory):
         print("Initializing terraform.")
         output = execute(['terraform', 'init'], print_stdout=False)
-        print(output)
+#        print(output)
 
 def destroy_infrastructure():
     """
     Runs terraform destroy.
     """
     # Mode is not relevant for destroy, but needs setting for TF.
-    os.environ["{}_mode".format(TF_ENV_PREFIX)] = 'build'
+    set_terraform_env('mode', 'large')
     os.chdir(TERRAFORM_DIRECTORY)
     execute(['terraform', 'destroy', '-auto-approve'])
+
+def set_terraform_env(key, value):
+    """
+    Sets a prefixed TF_ENV-variable to the given value.
+    """
+    os.environ["{}_{}".format(TF_ENV_PREFIX, key)] = value

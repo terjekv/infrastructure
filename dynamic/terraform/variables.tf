@@ -45,6 +45,22 @@ variable "create_aarch64" {
   default = false
 }
 
+variable "create_macos_catalina_aarch64" {
+  default = false
+}
+
+variable "create_macos_catalina_x86_64" {
+  default = false
+}
+
+variable "create_macos_big_sur_aarch64" {
+  default = false
+}
+
+variable "create_macos_big_sur_x86_64" {
+  default = false
+}
+
 variable "instance_aarch64" {
   type = map
 
@@ -64,3 +80,24 @@ variable "instance_x86_64" {
     large = "c5.4xlarge"
   }
 }
+
+variable "instance_macos_aarch64" {
+  type = map
+
+  default = {
+    small = "mac1.metal"
+    medium = "mac1.metal"
+    large = "mac1.metal"
+  }
+}
+
+variable "instance_macos_x86_64" {
+  type = map
+
+  default = {
+    small = "mac1.metal"
+    medium = "mac1.metal"
+    large = "mac1.metal"
+  }
+}
+

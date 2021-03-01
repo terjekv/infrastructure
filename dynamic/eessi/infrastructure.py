@@ -6,7 +6,8 @@ Classes for managing EESSI infrastructure
 import os
 
 from eessi.tools import is_acceptable_terraform_command, ensure_terraform_is_initialized
-from eessi.tools import ARCHITECTURES, TERRAFORM_DIRECTORY, TF_ENV_PREFIX, set_terraform_env
+from eessi.tools import TERRAFORM_DIRECTORY, TF_ENV_PREFIX, set_terraform_env
+from eessi.tools import ARCHITECTURES
 from eessi.tools import execute, destroy_infrastructure, ROOT_DIRECTORY
 from eessi.tools import is_acceptable_architecture, is_acceptable_node_type
 from eessi.state import state
@@ -88,7 +89,8 @@ class Infrastructure:
             return destroy_infrastructure()
 
         # TF_VAR_create_{aarch64,x86_64,power}=true 
-        # TF_VAR_mode={test,build}
+        # TF_VAR_create_macos_catalina_x86_64 | TF_VAR_create_macos_catalina_aarch64
+        # TF_VAR_mode={small,medium,large}
 
         os.chdir(TERRAFORM_DIRECTORY)
 

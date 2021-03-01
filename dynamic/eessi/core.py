@@ -8,7 +8,7 @@ import os
 import sys
 
 from eessi.infrastructure import Infrastructure
-from eessi.tools import ARCHITECTURES, NODE_TYPES, set_terraform_env
+from eessi.tools import ARCHITECTURES, DEFAULT_ARCHITECTURES, NODE_TYPES, set_terraform_env
 from eessi.tools import destroy_infrastructure
 
 # TODO:
@@ -36,7 +36,7 @@ def main():
     parser = argparse.ArgumentParser(description='Create EESSI infrastructure.',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--architectures', dest='architectures', choices=ARCHITECTURES, nargs='+',
-                        default=ARCHITECTURES, help='Pick what architectures to work on.')
+                        default=DEFAULT_ARCHITECTURES, help='Pick what architectures to work on.')
     parser.add_argument('--dry-run', dest='dryrun', action='store_const',
                         const=True, help='Dry run, show what would be done.')
     parser.add_argument('--public', dest='public', action='store_const',

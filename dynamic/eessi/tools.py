@@ -7,7 +7,8 @@ import os
 import subprocess
 
 NODE_TYPES = [ 'small', 'medium', 'large' ]
-ARCHITECTURES = [ 'x86_64', 'aarch64', 'power' ]
+ARCHITECTURES = [ 'x86_64', 'aarch64', 'power', 'macos_catalina_x86_64', 'macos_catalina_aarch64', 'macos_big_sur_x86_64', 'macos_big_sur_aarch64' ]
+DEFAULT_ARCHITECTURES = [ 'x86_64', 'aarch64' ]
 TERRAFORM_COMMANDS = [ 'plan', 'apply', 'destroy' ]
 TF_ENV_PREFIX = 'TF_VAR'
 ROOT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
@@ -43,8 +44,8 @@ def execute(cmd,print_stdout=False):
     return_code = process.wait()
     (stdout,stderr) = process.communicate()
 
-#    if print_stdout:
-#        print(stdout)
+    if print_stdout:
+        print(stdout)
     if return_code:
         print(stderr)
         raise subprocess.CalledProcessError(return_code, cmd)

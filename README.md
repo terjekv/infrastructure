@@ -1,7 +1,10 @@
-# infrastructure
-Scripts &amp; stuff to set up EESSI infrastructure
+# EESSI infrastructure
 
-```shell
-export AWS_ACCESS_KEY_ID=(your access key id)
-export AWS_SECRET_ACCESS_KEY=(your secret access key)
-```
+## Dynamic
+
+The dynamic folder hosts code to generate dynamic ad-hoc hosts and build environments on demand. This is typically used to build layers or test code.
+
+## Static
+
+The static folder hosts the statically defined infrastructure used by the EESSI project. This usage has restricted access.
+

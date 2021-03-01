@@ -1,0 +1,83 @@
+module "dedicated-host" {
+  source            = "DanielRDias/dedicated-host/aws"
+  version           = "0.2.1"
+  instance_type     = "mac1.metal"
+  availability_zone = "eu-west-1a"
+}
+
+output "dedicated-host" {
+  value = module.dedicated-host.dedicated_hosts["HostID"]
+}
+
+resource "aws_instance" "infra-macos-catalina-x86_64" {
+  ami                    = data.aws_ami.macos_catalina.id
+  instance_type          = "mac1.metal"
+  host_id                = module.dedicated-host.dedicated_hosts["HostID"]
+  vpc_security_group_ids = [aws_security_group.instance.id]
+  key_name               = "${var.localuser}-deployer-key"
+  monitoring             = true
+  count                  = var.create_macos_catalina_x86_64 ? 1 : 0
+
+#  root_block_device {
+#    volume_size = 80
+#  }
+
+  tags = {
+    Owner = var.localuser
+    Name = "eessi-macos-catalina-x86-64"
+  }
+}
+
+resource "aws_instance" "infra-macos-catalina-aarch64" {
+  ami                    = data.aws_ami.macos_catalina.id
+  instance_type          = "mac1.metal"
+  vpc_security_group_ids = [aws_security_group.instance.id]
+  key_name               = "${var.localuser}-deployer-key"
+  monitoring             = true
+  count                  = var.create_macos_catalina_aarch64 ? 1 : 0
+
+#  root_block_device {
+#    volume_size = 80
+#  }
+
+  tags = {
+    Owner = var.localuser
+    Name = "eessi-macos-catalina-aarch64"
+  }
+}
+
+resource "aws_instance" "infra-macos-big-sur-x86_64" {
+  ami                    = data.aws_ami.macos_big_sur.id
+  instance_type          = "mac1.metal"
+  vpc_security_group_ids = [aws_security_group.instance.id]
+  key_name               = "${var.localuser}-deployer-key"
+  monitoring             = true
+  count                  = var.create_macos_big_sur_x86_64 ? 1 : 0
+
+#  root_block_device {
+#    volume_size = 80
+#  }
+
+  tags = {
+    Owner = var.localuser
+    Name = "eessi-macos-big-sur-x86-64"
+  }
+}
+
+resource "aws_instance" "infra-macos-big-sur-aarch64" {
+  ami                    = data.aws_ami.macos_big_sur.id
+  instance_type          = "mac1.metal"
+  vpc_security_group_ids = [aws_security_group.instance.id]
+  key_name               = "${var.localuser}-deployer-key"
+  monitoring             = true
+  count                  = var.create_macos_big_sur_aarch64 ? 1 : 0
+
+#  root_block_device {
+#    volume_size = 80
+#  }
+
+  tags = {
+    Owner = var.localuser
+    Name = "eessi-macos-big-sur-aarch64"
+  }
+}

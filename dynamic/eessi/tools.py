@@ -43,8 +43,8 @@ def execute(cmd,print_stdout=False):
     return_code = process.wait()
     (stdout,stderr) = process.communicate()
 
-#    if print_stdout:
-#        print(stdout)
+    if print_stdout:
+        print(stdout)
     if return_code:
         print(stderr)
         raise subprocess.CalledProcessError(return_code, cmd)

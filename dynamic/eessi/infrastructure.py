@@ -33,7 +33,7 @@ class Infrastructure:
         Stringify object.
         """
         if self.state:
-            print(self.state)
+#            print(self.state)
             string = "Mode: {}".format(self.mode)
             for node in self.nodes:
                 if node.public_dns:

@@ -36,6 +36,11 @@ resource "aws_instance" "login_node" {
 #  }
 #}
 
+resource "aws_eip" "login_node" {
+  instance = aws_instance.login_node.id
+  vpc      = true
+}
+
 resource "aws_volume_attachment" "home-attachment" {
   depends_on   = [aws_instance.login_node]
   device_name  = "/dev/sdh"

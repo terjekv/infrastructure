@@ -3,7 +3,7 @@ data "aws_ami" "aarch64" {
 
   filter {
     name   = "name"
-    values = ["RHEL-8*arm64-*"]
+    values = ["eessi-rhel-8*arm64-*"]
   }
 
   filter {
@@ -11,7 +11,7 @@ data "aws_ami" "aarch64" {
     values = ["hvm"]
   }
 
-  owners = ["309956199498"] # RHEL
+  owners = ["self"] 
 }
 
 data "aws_ami" "x86_64" {
@@ -19,7 +19,7 @@ data "aws_ami" "x86_64" {
 
   filter {
     name   = "name"
-    values = ["RHEL-8*x86_64-*"]
+    values = ["eessi-rhel-8*x86_64-*"]
   }
 
   filter {
@@ -27,5 +27,5 @@ data "aws_ami" "x86_64" {
     values = ["hvm"]
   }
 
-  owners = ["309956199498"] # RHEL
+  owners = ["self"] 
 }

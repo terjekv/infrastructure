@@ -9,6 +9,8 @@
 #      filesystem: ext4
 #      overwrite: false
 
+hostname: login.eessi-hpc.org
+
 mounts:
     - [ "LABEL=persistent-homes", "/persistent" ]
 

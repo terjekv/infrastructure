@@ -1,6 +1,6 @@
 variable "ami_name" {
   type = string
-  default = "eessi-rhel-8-aarch64-{{ timestamp }}"
+  default = "eessi-rhel-8-arm64-{{ timestamp }}"
 }
 
 variable "region" {
@@ -18,11 +18,11 @@ variable "eessi_login_keys" {
 # source.
 source "amazon-ebs" "firstrun" {
   ami_name      = var.ami_name
-  instance_type = "t2.micro"
+  instance_type = "t4g.micro"
   region        = var.region
   source_ami_filter {
     filters = {
-      name                = "RHEL-8*aarch64-*"
+      name                = "RHEL-8*arm64-*"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }

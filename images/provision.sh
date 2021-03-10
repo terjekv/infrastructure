@@ -27,3 +27,5 @@ sudo sh -c "echo \"$EESSI_SSH_KEYS\" > /home/eessi/.ssh/authorized_keys"
 echo "Fixing permissions and ownership of ~eessi/.ssh"
 sudo chmod 0700 /home/eessi/.ssh
 sudo chown -R eessi:eessi /home/eessi/.ssh 
+
+sudo su -c "echo 'eessi ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/eessi"

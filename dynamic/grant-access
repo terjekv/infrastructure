@@ -1,0 +1,26 @@
+#!/bin/bash
+
+USER=$1
+HOST=$2
+
+SSHOPTS="-o StrictHostKeyChecking=no -o GlobalKnownHostsFile=/dev/null -o UserKnownHostsFile=/dev/null"
+
+if ! curl --silent https://github.com/$USER.keys > /tmp/$USER.ssh.keys; then
+    echo "Fetching ssh keys for $USER failed!"
+    exit 1
+fi
+
+for attempt in $( seq 1 10 ); do
+    echo "Attempting to ssh in as eessi@$HOST..."
+    if ssh -q $SSHOPTS eessi@$HOST exit; then
+        echo "SSH OK, adding key."
+        cat /tmp/$USER.ssh.keys | ssh $SSHOPTS $HOST -l eessi "cat >> ~/.ssh/authorized_keys"
+        echo "Done."
+        exit
+    fi
+    
+    echo "Attempt $attempt. No connection, sleeping 10 seconds and trying again."
+    sleep 10s
+done
+
+    

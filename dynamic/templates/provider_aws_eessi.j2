@@ -1,0 +1,120 @@
+
+provider "eessiaws" {
+  region = "{{ aws.region }}"
+}
+
+resource "aws_vpc" "{{ aws.region }}" { 
+    provider                         = eessiaws
+    enable_dns_support               = true
+    enable_dns_hostnames             = true
+    assign_generated_ipv6_cidr_block = true
+    cidr_block                       = "10.0.0.0/16"
+}
+
+resource "aws_subnet" "{{ aws.region }}" {
+    provider                = eessiaws
+    vpc_id                  = aws_vpc.{{ aws.region }}.id
+    cidr_block              = cidrsubnet(aws_vpc.{{ aws.region }}.cidr_block, 4, 1)
+    map_public_ip_on_launch = true
+
+    ipv6_cidr_block                 = cidrsubnet(aws_vpc.{{ aws.region }}.ipv6_cidr_block, 8, 1)
+    assign_ipv6_address_on_creation = true
+}
+
+resource "aws_internet_gateway" "{{ aws.region }}" {
+    provider = eessiaws
+    vpc_id   = aws_vpc.{{ aws.region }}.id
+}
+
+resource "aws_default_route_table" "{{ aws.region }}" {
+    provider               = eessiaws
+    default_route_table_id = aws_vpc.{{ aws.region }}.default_route_table_id
+
+    route {
+        cidr_block = "0.0.0.0/0"
+        gateway_id = aws_internet_gateway.{{ aws.region }}.id
+    }
+
+    route {
+        ipv6_cidr_block = "::/0"
+        gateway_id      = aws_internet_gateway.{{ aws.region }}.id
+    }
+}
+
+resource "aws_route_table_association" "{{ aws.region }}" {
+    provider       = eessiaws
+    subnet_id      = aws_subnet.{{ aws.region }}.id
+    route_table_id = aws_default_route_table.{{ aws.region }}.id
+}
+
+data "aws_ami" "aarch64" {
+  provider    = eessiaws
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["eessi-rhel-8*arm64-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = ["self"]
+}
+
+data "aws_ami" "x86_64" {
+  provider   = eessiaws
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["eessi-rhel-8*x86_64-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = ["self"] # RHEL
+}
+
+resource "aws_security_group" "instance" {
+  provider = eessiaws
+  vpc_id   = aws_vpc.{{ aws.region }}.id
+  name     = "aws_public"
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+}

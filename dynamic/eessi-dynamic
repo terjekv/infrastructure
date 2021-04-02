@@ -1,0 +1,363 @@
+#!/usr/bin/env python3
+
+import argparse
+import datetime
+import jinja2
+import json
+import os
+import subprocess
+import sys
+
+from monsterurl import get_monster
+
+ARCHITECTURES = [ 'x86_64:any:small', 'aarch64:any:small', 'power:any:small' ]
+AWS_REGION = "eu-central-1"
+
+DEFAULT_PROVIDER = 'aws'
+
+IMAGE_X86_64 = {
+    "small": "t2.small",
+    "medium": "t3.xlarge",
+    "large": "t3.2xlarge",
+}
+
+IMAGE_AARCH64 = {
+    "small": "t4g.small",
+    "medium": "t4g.large",
+    "large": "t4g.xlarge",
+}
+
+AARCH64_NODE_TYPES = [
+    "c6g",
+    "t4g",
+    "m6g",
+    "a1",
+]
+
+TERRAFORM_DIRECTORY = "/tmp/terraform"
+
+def error(string, exit_code=1):
+    sys.stderr.write(string)
+    sys.stderr.write("\n")
+    sys.exit(exit_code)
+
+def required_environment_keys_are_set(keys):
+    """
+    Check that the given environment keys are set.
+    """
+    missing_keys = []
+    for key in keys:
+        if not key in os.environ:
+            missing_keys.append(key)
+
+    if missing_keys:
+        sys.stderr.write("ERROR: The following environment variables must be set:\n ")
+        sys.stderr.write(", ".join(missing_keys))
+        sys.stderr.write("\n\n")
+        return False
+
+    return True
+
+def main():
+    parser = argparse.ArgumentParser(description='Modify dynamic EESSI infrastructure.',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--create-node', dest='node_type',
+                        help='Node type for the VM. (arch[:size][:provider]|instance_type)')
+    parser.add_argument('--node-name', dest="node_name",
+                        help='Name for the node.')
+    parser.add_argument('--node-issuer', dest="node_issuer",
+                        help='Issuer of the node.')
+    parser.add_argument('--node-user-name', dest="node_username",
+                        help='The full name of the user expected to use the node.')
+    parser.add_argument('--node-user-slack', dest="node_userslack",
+                        help='The slack handle of the user expected to use the node.')
+    parser.add_argument('--target-directory', dest="targetdirectory",
+                        help='Target directory for the terraform code.')
+    parser.add_argument('--dry-run', dest='dryrun', action='store_const',
+                        const=True, help='Dry run, show what would be done.')
+    parser.add_argument('--list-nodes', dest='list',
+                        action='store_const', const=True, help='List active nodes.')
+    parser.add_argument('--show-node', dest='shownode',
+                        help='Show details about a specific node.' )
+    parser.add_argument('--kill', dest="killnode",
+                        help='Kill node.')
+
+#    parser.add_argument('--public', dest='public', action='store_const', const=True,
+#                        help='Public SSH access. Default is running host only.')
+
+#    group = parser.add_mutually_exclusive_group(required=True)
+#    group.add_argument('--create', dest='create', choices=NODE_TYPES,
+#                        help='Create a node of the given type and do nothing further.')
+#    group.add_argument('--compatibility-layer', dest='compat',
+#                        action='store_const',
+#                        const=True, help='Build compatibility layer, implies create.')
+#    group.add_argument('--software-layer', dest='software',
+#                        action='store_const', const=True,
+#                        help='Build software layer, implies create. Pulls compat from CVMFS.')
+#    group.add_argument('--full-stack', dest='stack',
+#                        action='store_const', const=True, help='Build both layers from scratch.')
+#    group.add_argument('--status', dest='status',
+#                        action='store_const', const=True, help='Show current status')
+
+    args = parser.parse_args()
+
+    dryrun = False
+
+    if not required_environment_keys_are_set(['AWS_SECRET_ACCESS_KEY', 'AWS_ACCESS_KEY_ID']):
+        parser.print_help()
+        sys.exit(1)
+
+
+    ensure_core_config()
+    if args.shownode:
+        show_node(args.shownode)
+    elif args.killnode:
+        filename = TERRAFORM_DIRECTORY + '/' + args.killnode.lower() + ".tf"
+        if os.path.exists(filename):
+            os.remove(filename)
+        apply_infrastructure()
+        list_nodes()
+    elif args.list:
+        list_nodes()
+    elif args.node_type:
+        node = {
+            "type": args.node_type,
+            "name": get_monster().encode("ascii", errors="ignore").decode(),
+            "issuer": os.environ['LOGNAME'],
+            "username": '',
+            "userslack": '',
+            "eol": datetime.datetime.now() + datetime.timedelta(days=7),
+            "aws": {
+                "region": AWS_REGION,
+            },
+            "deployer_id": os.environ['LOGNAME'],
+        }
+
+        for arg in vars(args):
+            argname = arg.replace("node_", '')
+            if getattr(args, arg):
+                node[argname] = getattr(args, arg)
+
+        create_node(node, dryrun=dryrun)
+        apply_infrastructure()
+        list_nodes()
+    else:
+        parser.print_usage()
+
+def ensure_core_config():
+    create_file_from_template("keys.j2", TERRAFORM_DIRECTORY + "/keys-" + os.environ['LOGNAME'] + ".tf", {
+        "deployer_id": os.environ['LOGNAME'],
+    } )
+    create_file_from_template("core.j2", TERRAFORM_DIRECTORY + "/core.tf", {})
+    create_file_from_template("provider_aws_eessi.j2", TERRAFORM_DIRECTORY + "/provider_aws_eessi.tf", {
+        "deployer_id": os.environ['LOGNAME'],
+        "aws": {
+            "region": AWS_REGION
+            }
+        })
+
+def create_node(node, dryrun=False):
+    nodedata = node['type'].split(':')
+
+    if len(nodedata) == 1:
+        # We either get arch or an instance type.
+        # We did not get a provider or size.
+        node['provider'] = DEFAULT_PROVIDER
+        if nodedata[0].lower() == 'x86_64':
+            node['image'] = IMAGE_X86_64['medium']
+            node['type'] = IMAGE_X86_64['medium']
+            node['architecture'] = 'x86_64'
+        elif nodedata[0].lower() == 'aarch64':
+            node['image'] = IMAGE_AARCH64['medium']
+            node['type'] = IMAGE_AARCH64['medium']
+            node['architecture'] = 'aarch64'
+        else:
+            # aws ec2 describe-instance-types --filters Name=current-generation,Values=true \
+            # --query 'sort_by(InstanceTypes, &InstanceType)[].InstanceType' |\
+            # grep '"' | cut -f2 -d'"' > valid-aws-instance-types
+            # And yes, this assumes we're on AWS.
+            with open('valid-aws-instance-types', 'r') as valid_aws_instances:
+                if nodedata[0] in valid_aws_instances.read():
+                    node['image'] = nodedata[0]
+                    (node_identifier, node_size) = nodedata[0].split('.')
+                    if node_identifier in AARCH64_NODE_TYPES:
+                        node['architecture'] = 'aarch64'
+                    else:
+                        node['architecture'] = 'x86_64'
+                else:
+                    error('"{}" is not a valid AWS instance type'.format(nodedata[0]))
+
+    elif len(nodedata) == 2:
+        # We get arch and size, but no provider
+        size = nodedata[1].lower()
+        if not size in IMAGE_X86_64:
+            error("'{}' is not a valid size. Valid sizes are {}.".format(size, ', '.join(IMAGE_X86_64.keys())))
+
+        node['provider'] = DEFAULT_PROVIDER
+
+        if nodedata[0].lower() == 'x86_64':
+            node['image'] = IMAGE_X86_64[size]
+        elif nodedata[0].lower() == 'aarch64':
+            node['image'] = IMAGE_AARCH64[size]
+        else:
+            error("'{}' is an unsupported aarchitecture.".format(nodedata[0].lower()))
+
+    print("Creating '{}'.".format(node['name']))
+
+    create_file_from_template("node.j2", TERRAFORM_DIRECTORY + "/" + node['name'].lower() + ".tf", node)
+
+    # sys.exit(0)
+    # data = {
+    #     "deployer_id": "eessi-bot",
+
+    #     "aws": {
+    #         "region": AWS_REGION
+    #     },
+
+    #     "nodes": [
+    #         {
+    #         "provider_name": "aws",
+    #         "instance_name_clean": "terjekv-test",
+    #         "instance_name": "terjekv-test",
+    #         "architecture": "x86_64",
+    #         "instance_type": "t2.micro",
+    #         "instance_tag_owner": "terjekv",
+    #         "instance_tag_name": "[terjekv] testnode",
+    #         "instance_tag_user": "terjekv",
+    #         "instance_tag_slack": "@terjekv",
+    #         },
+    #     ],
+    # }
+
+def show_node(nodename):
+    terraform_show = show_infrastructure()
+    json_data = json.loads(terraform_show)
+
+    if not 'values' in json_data:
+        return
+    if not 'root_module' in json_data['values']:
+        return
+    if not 'resources' in json_data['values']['root_module']:
+        return
+
+    resources = json_data['values']['root_module']['resources']
+
+    for resource in resources:
+        if resource['type'] == 'aws_instance':
+            val = resource['values']
+            if val['tags']['Name'] == nodename:
+                print(json.dumps(val, indent=4, sort_keys=True))
+
+
+def list_nodes():
+    terraform_show = show_infrastructure()
+    json_data = json.loads(terraform_show)
+
+    if not 'values' in json_data:
+        return
+    if not 'root_module' in json_data['values']:
+        return
+    if not 'resources' in json_data['values']['root_module']:
+        return
+
+    resources = json_data['values']['root_module']['resources']
+
+    for resource in resources:
+        if resource['type'] == 'aws_instance':
+            val = resource['values']
+#            print(json.dumps(resource, indent=4, sort_keys=True))
+            print("{:30} {:<30}".format(val['tags']['Name'], val['public_dns']))
+
+def create_file_from_template(templatefile, targetfile, data):
+    templateLoader = jinja2.FileSystemLoader(searchpath="./templates")
+    templateEnv = jinja2.Environment(loader=templateLoader)
+    template = templateEnv.get_template(templatefile)
+    outputText = template.render(data, trim_blocks=True)  # this is where to put args to the template renderer
+
+    with open(targetfile, "w") as fh:
+        fh.write(outputText)
+
+def execute(cmd,print_stdout=False):
+    """
+    Executes a command, prints stdout, raises error if it fails.
+    """
+    process = subprocess.Popen(cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        universal_newlines=True)
+
+    return_code = process.wait()
+    (stdout,stderr) = process.communicate()
+
+    if print_stdout:
+        print(stdout)
+    if return_code:
+        print(stderr)
+        raise subprocess.CalledProcessError(return_code, cmd)
+
+    return stdout
+
+def ensure_terraform_is_initialized(directory='.terraform'):
+    """
+    Ensure that terraform is appropriately initialized.
+    """
+    os.chdir(TERRAFORM_DIRECTORY)
+
+    if not os.path.isdir(directory):
+#        print("Initializing terraform.")
+        output = execute(['terraform', 'init'], print_stdout=False)
+#        print(output)
+
+def plan_infrastructure():
+    """
+    Performs a 'terraform plan' on the current infrastructure.
+    """
+    return terraform('plan')
+
+def show_infrastructure():
+    """
+    Performs a 'terraform show' on the current infrastructure.
+    """
+    return terraform('show')
+
+def apply_infrastructure():
+    """
+    Performs a 'terraform apply' on the current infrastructure.
+    """
+    return terraform('apply')
+
+def destroy_infrastructure():
+    """
+    Performs a terraform destroy.
+    """
+    return terraform('destroy')
+
+def terraform(command):
+    """
+    Executes an appropriate terraform command based on the current infrastructure.
+    """
+    command = command.lower()
+    if not command in [ 'plan', 'apply', 'destroy', 'show' ]:
+        error("Unknown terraform command '{}'!".format(command))
+
+    if command == 'destroy':
+        return destroy_infrastructure()
+
+    os.chdir(TERRAFORM_DIRECTORY)
+
+    ensure_terraform_is_initialized()
+
+    if command == 'apply':
+#        print("Applying state, please wait...")
+        return execute(['terraform', command, '-auto-approve'], print_stdout=False)
+    elif command == 'plan':
+#        print("Planning state, please wait...")
+        return execute(['terraform', command], print_stdout=False)
+    elif command == 'show':
+#        print("Retriving state, please wait...")
+        return execute(['terraform', command, '-json'], print_stdout=False)
+    else:
+        error("Unexpected terraform command '{}'!".format(command))
+
+main()
+

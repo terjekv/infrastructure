@@ -1,6 +1,0 @@
-[submodule "compatibility-layer"]
-	path = dynamic/compatibility-layer
-	url = https://github.com/EESSI/compatibility-layer
-[submodule "software-layer"]
-	path = dynamic/software-layer
-	url = https://github.com/EESSI/software-layer

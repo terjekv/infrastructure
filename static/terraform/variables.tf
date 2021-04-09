@@ -6,6 +6,9 @@ variable "aws_availability_zone" {
   default = "eu-west-1a"
 }
 
+variable "aws_route53_infra_zoneid" {
+  default = "Z10412033IZUH86YLABLW"
+}
 variable "localuser" {
   default = "eessi-admin"
 }

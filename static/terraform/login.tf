@@ -17,6 +17,10 @@ resource "aws_instance" "login_node" {
     volume_size = 20
   }
 
+  lifecycle {
+    ignore_changes = [ami, user_data]
+  }
+
   tags = {
 #    Owner = var.localuser
     Name = "[CORE] login.eessi-hpc.org"
@@ -39,6 +43,10 @@ resource "aws_instance" "login_node" {
 resource "aws_eip" "login_node" {
   instance = aws_instance.login_node.id
   vpc      = true
+
+  tags = {
+    Name = "login"
+  }
 }
 
 resource "aws_volume_attachment" "home-attachment" {
@@ -47,4 +55,12 @@ resource "aws_volume_attachment" "home-attachment" {
   volume_id    = "vol-0002925059d439a40"
   instance_id  = aws_instance.login_node.id
   force_detach = true
+}
+
+resource "aws_route53_record" "login" {
+  zone_id = var.aws_route53_infra_zoneid
+  name    = "login.infra.eessi-hpc.org"
+  type    = "A"
+  ttl     = "300"
+  records = [aws_eip.login_node.public_ip]
 }

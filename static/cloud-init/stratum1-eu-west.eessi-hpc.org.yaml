@@ -1,0 +1,43 @@
+#cloud-config
+
+# Cloud-init for login.eessi-hpc.org
+
+#fs_setup:
+#    - device: /dev/nvme1n1
+#      partition: none
+#      label: eessi-home
+#      filesystem: ext4
+#      overwrite: false
+
+hostname: stratum1-eu-west.eessi-hpc.org
+
+mounts:
+    - [ "LABEL=stratum1-e-w", "/stratum1" ]
+
+yum_repos:
+    epel-release:
+        baseurl: https://download.fedoraproject.org/pub/epel/$releasever/Everything/$basearch
+        metalink: https://mirrors.fedoraproject.org/metalink?repo=epel-$releasever&arch=$basearch&infra=$infra&content=$contentdir
+        enabled: true
+        failovermethod: priority
+        gpgcheck: true
+        gpgkey: http://download.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8
+        name: Extra Packages for Enterprise Linux 8 - Release
+
+package_upgrade: true
+
+packages:
+  - ansible
+  - awscli  
+  - git
+  - httpd
+  - htop
+  # required for semanage
+  - policycoreutils-python-utils
+  - python38
+  - screen
+  - singularity
+  - tmux
+
+runcmd:
+  - semanage fcontext -a -e /var/www /stratum1

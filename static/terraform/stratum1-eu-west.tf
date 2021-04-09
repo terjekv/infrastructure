@@ -17,6 +17,9 @@ resource "aws_instance" "stratum1_eu_west" {
     volume_size = 20
   }
 
+  lifecycle {
+    ignore_changes = [ami, user_data]
+  }
   tags = {
 #    Owner = var.localuser
     Name = "[CORE] stratum1-eu-west.eessi-hpc.org"
@@ -26,6 +29,11 @@ resource "aws_instance" "stratum1_eu_west" {
 resource "aws_eip" "stratum1_eu_west" {
   instance = aws_instance.stratum1_eu_west.id
   vpc      = true
+
+  tags = {
+    Name = "stratum1-eu-west"
+  }
+
 }
 
 resource "aws_volume_attachment" "stratum1_eu_west_attachment" {
@@ -34,4 +42,12 @@ resource "aws_volume_attachment" "stratum1_eu_west_attachment" {
   volume_id    = "vol-0f85254bbd75761f4"
   instance_id  = aws_instance.stratum1_eu_west.id
   force_detach = true
+}
+
+resource "aws_route53_record" "stratum1_eu_west" {
+  zone_id = var.aws_route53_infra_zoneid
+  name    = "cvmfs-s1-aws-euwest1.infra.eessi-hpc.org"
+  type    = "A"
+  ttl     = "300"
+  records = [aws_eip.stratum1_eu_west.public_ip]
 }

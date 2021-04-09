@@ -65,6 +65,8 @@ def main():
                         help='Node type for the VM. (arch[:size][:provider]|instance_type)')
     parser.add_argument('--node-name', dest="node_name",
                         help='Name for the node.')
+    parser.add_argument('--node-description', dest="node_description",
+                        help='Description for the node.')
     parser.add_argument('--node-issuer', dest="node_issuer",
                         help='Issuer of the node.')
     parser.add_argument('--node-user-name', dest="node_username",
@@ -120,9 +122,11 @@ def main():
     elif args.list:
         list_nodes()
     elif args.node_type:
+        silly_name = get_monster().encode("ascii", errors="ignore").decode()
         node = {
             "type": args.node_type,
-            "name": get_monster().encode("ascii", errors="ignore").decode(),
+            "description": silly_name,
+            "name": silly_name,
             "issuer": os.environ['LOGNAME'],
             "username": '',
             "userslack": '',
@@ -139,8 +143,9 @@ def main():
                 node[argname] = getattr(args, arg)
 
         create_node(node, dryrun=dryrun)
-        apply_infrastructure()
-        list_nodes()
+        if not args.dryrun:
+            apply_infrastructure()
+            list_nodes()
     else:
         parser.print_usage()
 
@@ -197,8 +202,12 @@ def create_node(node, dryrun=False):
 
         if nodedata[0].lower() == 'x86_64':
             node['image'] = IMAGE_X86_64[size]
+            node['type'] = IMAGE_X86_64[size]
+            node['architecture'] = 'x86_64'
         elif nodedata[0].lower() == 'aarch64':
             node['image'] = IMAGE_AARCH64[size]
+            node['type'] = IMAGE_AARCH64[size]
+            node['architecture'] = 'aarch64'
         else:
             error("'{}' is an unsupported aarchitecture.".format(nodedata[0].lower()))
 
@@ -245,7 +254,7 @@ def show_node(nodename):
     for resource in resources:
         if resource['type'] == 'aws_instance':
             val = resource['values']
-            if val['tags']['Name'] == nodename:
+            if resource['name'] == nodename:
                 print(json.dumps(val, indent=4, sort_keys=True))
 
 
@@ -262,11 +271,15 @@ def list_nodes():
 
     resources = json_data['values']['root_module']['resources']
 
+    print("{:20} {:<20} {:<20}".format('Hostname', 'Description', 'EOL'))
     for resource in resources:
         if resource['type'] == 'aws_instance':
             val = resource['values']
 #            print(json.dumps(resource, indent=4, sort_keys=True))
-            print("{:30} {:<30}".format(val['tags']['Name'], val['public_dns']))
+            eol = val['tags']['EOL'].split('.', 1)[0]
+            print("{:20} {:<20} {:<20}".format(resource['name'], val['tags']['Name'], eol ))
+    print("\nSubdomain: dynamic.infra.eessi-hpc.org")
+
 
 def create_file_from_template(templatefile, targetfile, data):
     templateLoader = jinja2.FileSystemLoader(searchpath="./templates")

@@ -3,12 +3,35 @@ provider "eessiaws" {
   region = "{{ aws.region }}"
 }
 
+variable "aws_route53_infra_zoneid" {
+  default = "Z10412033IZUH86YLABLW"
+}
+
 resource "aws_vpc" "{{ aws.region }}" { 
     provider                         = eessiaws
     enable_dns_support               = true
     enable_dns_hostnames             = true
     assign_generated_ipv6_cidr_block = true
     cidr_block                       = "10.0.0.0/16"
+}
+
+resource "aws_route53_zone" "dynamic" {
+  provider = eessiaws
+  name     = "dynamic.infra.eessi-hpc.org"
+
+  tags = {
+    Name = "Dynamic / ad-hoc"
+    Environment = "dynamic"
+  }
+}
+
+resource "aws_route53_record" "dynamic-ns" {
+  provider = eessiaws
+  zone_id  = var.aws_route53_infra_zoneid
+  name     = "dynamic.infra.eessi-hpc.org"
+  type     = "NS"
+  ttl      = "30"
+  records  = aws_route53_zone.dynamic.name_servers
 }
 
 resource "aws_subnet" "{{ aws.region }}" {

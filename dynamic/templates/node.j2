@@ -27,10 +27,28 @@ resource "{{ provider }}_instance" "{{ name }}" {
 
   tags = {
     Issuer = "{{ issuer }}"
-    Name  = "{{ name }}"
+    Name  = "{{ description }}"
     User  = "{{ username }}"
     Slack = "{{ userslack }}"
     EOL = "{{ eol }}"
     Ephemeral = "True"
   }
+}
+
+resource "aws_route53_record" "{{ name }}_aaaa" {
+  provider = eessiaws
+  zone_id  = aws_route53_zone.dynamic.id
+  name     = "{{ name }}.dynamic.infra.eessi-hpc.org"
+  type     = "AAAA"
+  ttl      = "300"
+  records  = [{{ provider}}_instance.{{ name }}.ipv6_addresses[0]]
+}
+
+resource "aws_route53_record" "{{ name }}" {
+  provider = eessiaws
+  zone_id  = aws_route53_zone.dynamic.id
+  name     = "{{ name }}.dynamic.infra.eessi-hpc.org"
+  type     = "A"
+  ttl      = "300"
+  records  = [{{ provider}}_instance.{{ name }}.public_ip]
 }

@@ -280,13 +280,13 @@ def list_nodes():
 
     resources = json_data['values']['root_module']['resources']
 
-    print("{:20} {:<20} {:<20}".format('Hostname', 'Description', 'EOL'))
+    print("{:20} {:<20} {:<20} {:<20}".format('Hostname', 'IP', 'Description', 'EOL'))
     for resource in resources:
         if resource['type'] == 'aws_instance':
             val = resource['values']
 #            print(json.dumps(resource, indent=4, sort_keys=True))
             eol = val['tags']['EOL'].split('.', 1)[0]
-            print("{:20} {:<20} {:<20}".format(resource['name'], val['tags']['Name'], eol ))
+            print("{:20} {:<20} {:<20} {:<20}".format(resource['name'], val['public_ip'], val['tags']['Name'], eol ))
     print("\nSubdomain: dynamic.infra.eessi-hpc.org")
 
 

@@ -8,6 +8,10 @@ import os
 import subprocess
 import sys
 
+from rich.console import Console
+from rich.table import Table
+
+from python_hosts import Hosts, HostsEntry
 from monsterurl import get_monster
 
 ARCHITECTURES = [ 'x86_64:any:small', 'aarch64:any:small', 'power:any:small' ]
@@ -126,8 +130,12 @@ def main():
         filename = TERRAFORM_DIRECTORY + '/' + args.killnode.lower() + ".tf"
         if os.path.exists(filename):
             os.remove(filename)
-        apply_infrastructure()
-        list_nodes()
+            apply_infrastructure()
+            list_nodes()
+            remove_host_entry(args.killnode)
+        else:
+            print("No such node: '{}'".format(filename))
+
     elif args.list:
         list_nodes()
     elif args.node_type:
@@ -155,6 +163,7 @@ def main():
         if not args.dryrun:
             apply_infrastructure()
             list_nodes()
+        ensure_host_entry(node['name'])
     else:
         parser.print_usage()
 
@@ -248,8 +257,21 @@ def create_node(node, dryrun=False):
     # }
 
 def show_node(nodename):
+    node = get_node(nodename)
+    print(json.dumps(node, indent=4, sort_keys=True))
+
+def get_node(nodename):
+    nodes = get_nodes()
+    for node in nodes:
+        if node['name'] == nodename:
+            return node
+
+    return
+
+def get_nodes():
     terraform_show = show_infrastructure()
     json_data = json.loads(terraform_show)
+    nodes = []
 
     if not 'values' in json_data:
         return
@@ -259,42 +281,41 @@ def show_node(nodename):
         return
 
     resources = json_data['values']['root_module']['resources']
-
     for resource in resources:
         if resource['type'] == 'aws_instance':
-            val = resource['values']
-            if resource['name'] == nodename:
-                print(json.dumps(val, indent=4, sort_keys=True))
+            nodes.append(resource)
 
+    return nodes
 
 def list_nodes():
-    terraform_show = show_infrastructure()
-    json_data = json.loads(terraform_show)
-
-    if not 'values' in json_data:
-        return
-    if not 'root_module' in json_data['values']:
-        return
-    if not 'resources' in json_data['values']['root_module']:
+    nodes = get_nodes()
+    if not nodes:
         return
 
-    resources = json_data['values']['root_module']['resources']
+    print("EESSI nodes under dynamic.infra.eessi-hpc.org")
 
-    print("{:20} {:<20} {:<20} {:<20}".format('Hostname', 'IP', 'Description', 'EOL'))
-    for resource in resources:
-        if resource['type'] == 'aws_instance':
-            val = resource['values']
-#            print(json.dumps(resource, indent=4, sort_keys=True))
-            eol = val['tags']['EOL'].split('.', 1)[0]
-            print("{:20} {:<20} {:<20} {:<20}".format(resource['name'], val['public_ip'], val['tags']['Name'], eol ))
-    print("\nSubdomain: dynamic.infra.eessi-hpc.org")
+    table = Table()
+
+    table.add_column("Hostname", style="cyan")
+    table.add_column("IP", justify="right", style="magenta")
+    table.add_column("Description", style="green")
+    table.add_column('EOL', style="cyan")
+
+    for node in nodes:
+        val = node['values']
+#        print(json.dumps(resource, indent=4, sort_keys=True))
+        eol = val['tags']['EOL'].split('.', 1)[0]
+        table.add_row(node['name'], val['public_ip'], val['tags']['Name'], eol)
+
+    console = Console()
+    console.print(table)
 
 
 def create_file_from_template(templatefile, targetfile, data):
     templateLoader = jinja2.FileSystemLoader(searchpath=TEMPLATE_DIRECTORY)
     templateEnv = jinja2.Environment(loader=templateLoader)
     template = templateEnv.get_template(templatefile)
-    outputText = template.render(data, trim_blocks=True)  # this is where to put args to the template renderer
+    outputText = template.render(data, trim_blocks=True)
 
     with open(targetfile, "w") as fh:
         fh.write(outputText)
@@ -318,6 +339,43 @@ def execute(cmd,print_stdout=False):
         raise subprocess.CalledProcessError(return_code, cmd)
 
     return stdout
+
+def get_hostfile():
+    osfile = '/etc/hosts'
+
+    if os.path.exists(osfile):
+        if os.path.isfile(osfile):
+            if os.access(osfile, os.W_OK):
+                return osfile
+
+    return '/tmp/hosts'
+
+def ensure_host_entry(hostname):
+    """
+    Ensure that a host entry for the node is found in /etc/hosts.
+    """
+    node = get_node(hostname)
+
+    if not node:
+        return False
+
+    hosts = Hosts(path=get_hostfile())
+    new_entry = HostsEntry(entry_type='ipv4', address=node['values']['public_ip'], names=[hostname])
+    hosts.add([new_entry])
+    hosts.write()
+
+def remove_host_entry(hostname):
+    """
+    Ensure that a host entry for the node is found in /etc/hosts.
+    """
+    node = get_node(hostname)
+
+    if not node:
+        return False
+
+    hosts = Hosts(path=get_hostfile())
+    hosts.remove_all_matching(name=hostname)
+    hosts.write()
 
 def ensure_terraform_is_initialized(directory='.terraform'):
     """

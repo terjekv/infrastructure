@@ -199,7 +199,7 @@ def create_node(node, dryrun=False):
             # --query 'sort_by(InstanceTypes, &InstanceType)[].InstanceType' |\
             # grep '"' | cut -f2 -d'"' > valid-aws-instance-types
             # And yes, this assumes we're on AWS.
-            with open('valid-aws-instance-types', 'r') as valid_aws_instances:
+            with open(TERRAFORM_DIRECTORY + '/../valid-aws-instance-types', 'r') as valid_aws_instances:
                 if nodedata[0] in valid_aws_instances.read():
                     node['image'] = nodedata[0]
                     (node_identifier, node_size) = nodedata[0].split('.')

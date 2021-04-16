@@ -1,4 +1,4 @@
-variable "keys" {
+variable "{{ deployer_id }}-keys" {
   type = map
 
   default = {
@@ -10,7 +10,7 @@ variable "keys" {
 resource "aws_key_pair" "{{ deployer_id }}-keys" {
   provider   = eessiaws
   key_name   = "{{ deployer_id }}-deployer-key"
-  public_key = file(var.keys["public"])
+  public_key = file(var.{{ deployer_id }}-keys["public"])
   tags = {
     Owner = "{{ deployer_id }}"
   }

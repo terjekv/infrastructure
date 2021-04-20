@@ -59,6 +59,13 @@ resource "aws_volume_attachment" "home-attachment" {
 
 resource "aws_route53_record" "login" {
   zone_id = var.aws_route53_infra_zoneid
+  name    = "login.eessi-infra.org"
+  type    = "A"
+  ttl     = "300"
+  records = [aws_eip.login_node.public_ip]
+}
+resource "aws_route53_record" "login_infra" {
+  zone_id = var.aws_route53_infra_hpc_zoneid
   name    = "login.infra.eessi-hpc.org"
   type    = "A"
   ttl     = "300"

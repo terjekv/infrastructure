@@ -45,8 +45,15 @@ resource "aws_volume_attachment" "stratum1_eu_west_attachment" {
 }
 
 resource "aws_route53_record" "stratum1_eu_west" {
-  zone_id = var.aws_route53_infra_zoneid
+  zone_id = var.aws_route53_infra_hpc_zoneid
   name    = "cvmfs-s1-aws-euwest1.infra.eessi-hpc.org"
+  type    = "A"
+  ttl     = "300"
+  records = [aws_eip.stratum1_eu_west.public_ip]
+}
+resource "aws_route53_record" "stratum1_eu_west_infra" {
+  zone_id = var.aws_route53_infra_zoneid
+  name    = "cvmfs-s1-aws-euwest1.eessi-infra.org"
   type    = "A"
   ttl     = "300"
   records = [aws_eip.stratum1_eu_west.public_ip]

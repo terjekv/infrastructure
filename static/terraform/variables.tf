@@ -40,6 +40,10 @@ variable "instance_stratum1" {
     default = "t3.xlarge"
 }
 
+variable "instance_monitoring" {
+    default = "t3.xlarge"
+}
+
 variable "instance_login" {
     default = "t4g.micro"
 }

@@ -14,3 +14,7 @@ output "stratum1_eu_west_node_eip" {
   value       = aws_eip.stratum1_eu_west.*.public_dns
 }
 
+output "monitoring_node_eip" {
+  value       = aws_eip.monitoring_node.*.public_dns
+}
+

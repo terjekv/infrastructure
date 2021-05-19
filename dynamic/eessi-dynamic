@@ -5,6 +5,7 @@ import datetime
 import jinja2
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -77,9 +78,9 @@ def main():
     parser.add_argument('--create-node', dest='node_type',
                         help='Node type for the VM. (arch[:size][:provider]|instance_type)')
     parser.add_argument('--node-name', dest="node_name",
-                        help='Name for the node.')
+                        help='DNS name for the node.')
     parser.add_argument('--node-description', dest="node_description",
-                        help='Description for the node.')
+                        help='Description for the node (this is the AWS tag "Name").')
     parser.add_argument('--node-issuer', dest="node_issuer",
                         help='Issuer of the node.')
     parser.add_argument('--node-user-name', dest="node_username",
@@ -157,6 +158,11 @@ def main():
         for arg in vars(args):
             argname = arg.replace("node_", '')
             if getattr(args, arg):
+                val = getattr(args, arg)
+                if arg == "node_name":
+                    if not is_valid_hostname(val):
+                        print("Invalid node name: '{}', must match '{}'".format(val, '(?!-)[a-z\d-]\{1,63\}(?<!-)$'))
+                        sys.exit(2)
                 node[argname] = getattr(args, arg)
 
         create_node(node, dryrun=dryrun)
@@ -168,16 +174,17 @@ def main():
         parser.print_usage()
 
 def ensure_core_config():
-    create_file_from_template("keys.j2", TERRAFORM_DIRECTORY + "/keys-" + os.environ['LOGNAME'] + ".tf", {
-        "deployer_id": os.environ['LOGNAME'],
-    } )
-    create_file_from_template("core.j2", TERRAFORM_DIRECTORY + "/core.tf", {})
-    create_file_from_template("provider_aws_eessi.j2", TERRAFORM_DIRECTORY + "/provider_aws_eessi.tf", {
+    data = {
         "deployer_id": os.environ['LOGNAME'],
         "aws": {
             "region": AWS_REGION
             }
-        })
+        }
+
+    create_file_from_template("keys.j2", TERRAFORM_DIRECTORY + "/keys-" + os.environ['LOGNAME'] + ".tf", data )
+    create_file_from_template("core.j2", TERRAFORM_DIRECTORY + "/core.tf", data )
+#    create_file_from_template("s3-staging.j2", TERRAFORM_DIRECTORY + "/s3-staging.tf", data )
+    create_file_from_template("provider_aws_eessi.j2", TERRAFORM_DIRECTORY + "/provider_aws_eessi.tf", data )
 
 def create_node(node, dryrun=False):
     nodedata = node['type'].split(':')
@@ -417,8 +424,13 @@ def terraform(command):
     Executes an appropriate terraform command based on the current infrastructure.
     """
     command = command.lower()
-    if not command in [ 'plan', 'apply', 'destroy', 'show' ]:
+    if not command in [ 'plan', 'apply', 'destroy', 'show', 'refresh' ]:
         error("Unknown terraform command '{}'!".format(command))
+
+    # Before we do anything else, do a refresh.
+    if command != 'refresh':
+#        print("Doing a refresh")
+        execute(['terraform', 'refresh'])
 
     if command == 'destroy':
         return destroy_infrastructure()
@@ -436,8 +448,18 @@ def terraform(command):
     elif command == 'show':
 #        print("Retriving state, please wait...")
         return execute(['terraform', command, '-json'], print_stdout=False)
+    elif command == 'refresh':
+        return execute(['terraform', command], print_stdout=False)
     else:
         error("Unexpected terraform command '{}'!".format(command))
+
+def is_valid_hostname(hostname):
+    if len(hostname) > 255:
+        return False
+    if hostname[-1] == ".":
+        hostname = hostname[:-1] # strip exactly one dot from the right, if present
+    allowed = re.compile("(?!-)[A-Z\d-]{1,63}(?<!-)$", re.IGNORECASE)
+    return all(allowed.match(x) for x in hostname.split("."))
 
 main()
 

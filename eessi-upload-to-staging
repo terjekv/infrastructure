@@ -37,20 +37,6 @@ function upload_to_staging_bucket
     fi
 }
 
-function compare_part_of_string
-{
-  string=$1
-  part=$2
-  target=$3
-
-  part_in_string=$( echo $string | cut -f${part} -d'-' )
-  if [ $part_in_string == $target ]; then
-    return 0
-  else
-    return 1
-  fi
-}
-
 # This needs expanding etc.
 function check_file_name
 {

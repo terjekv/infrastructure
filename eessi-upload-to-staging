@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [[ $# -lt 1 ]]; then
+    echo "Usage: $0 <filenames>" >&2
+    exit 1
+fi
+
 function upload_to_staging_bucket
 {
   file=$1
@@ -32,8 +37,37 @@ function upload_to_staging_bucket
     fi
 }
 
+# This needs expanding etc.
+function check_file_name
+{
+  filename=$1
+  if ( echo $filename | grep ^eessi > /dev/null && 
+    echo $filename | grep -E '(compat|software)' > /dev/null ); then
+    return 0
+  else
+    return 1
+  fi
+}
+
 for file in "$*"; do
   # eessi-${pilot_version}-software-${os}-`echo ${cpu_arch_subdir} | tr '/' '-'`-${timestamp}.tar.gz" 
-  aws_path=$(basename $file | tr -s '-' '/' | perl -pe 's/^eessi.//;')
-  upload_to_staging_bucket "${file}" "${aws_path}"
+  if [[ -r "$file" && -f "$file" &&  -s "$file" ]]; then
+    basefile=$( basename $file )
+    if check_file_name $basefile; then
+      if tar tf "$file" > /dev/null; then
+        aws_path=$(basename $file | tr -s '-' '/' | perl -pe 's/^eessi.//;')
+        echo $aws_path
+        upload_to_staging_bucket "${file}" "${aws_path}"
+      else
+        echo "'$file' is not a tar file."
+        exit 1
+      fi
+    else
+      echo "$file does not look like an eessi layer filename!"
+      exit 1
+    fi
+  else
+      echo "'$file' is not a readable non zero-sized file."
+      exit 1
+  fi
 done

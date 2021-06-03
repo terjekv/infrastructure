@@ -57,7 +57,7 @@ for file in "$*"; do
       if tar tf "$file" > /dev/null; then
         aws_path=$(basename $file | tr -s '-' '/' | perl -pe 's/^eessi.//;')
         echo $aws_path
-#       upload_to_staging_bucket "${file}" "${aws_path}"
+        upload_to_staging_bucket "${file}" "${aws_path}"
       else
         echo "'$file' is not a tar file."
         exit 1

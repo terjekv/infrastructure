@@ -1,0 +1,39 @@
+#!/bin/bash
+
+function upload_to_staging_bucket
+{
+  file=$1
+  path=$2
+  bucket='eessi-staging'
+  region='eu-west-1'
+  date=$(date +"%a, %d %b %Y %T %z")
+  content_type='application/x-compressed-tar'
+
+  acl="x-amz-acl:public-read"
+  string="PUT\n\n${content_type}\n${date}\n${acl}\n/${bucket}/${path}"
+  
+  if ! [ -z "$AWS_ACCESS_KEY_ID" ]; then
+    signature=$(echo -en "${string}" | openssl sha1 -hmac "${AWS_SECRET_ACCESS_KEY}" -binary | base64)
+    authstring="-H \"Authorization: AWS ${AWS_SECRET_ACCESS_KEY}:$signature\""
+    aclstring="-H \"${acl}\""
+  fi
+
+  if ! curl --silent -X PUT -T "$file" \
+    -H "Host: ${bucket}.s3.amazonaws.com" \
+    -H "Date: ${date}" \
+    -H "Content-Type: ${content_type}" \
+    $aclstring \
+    $authstring \
+    "https://${bucket}.s3.amazonaws.com/${path}" > /dev/null; then
+	echo "https://${bucket}.s3.amazonaws.com/${path}"
+    else
+	echo "Permission denied."
+	exit 1
+    fi
+}
+
+for file in "$*"; do
+  # eessi-${pilot_version}-software-${os}-`echo ${cpu_arch_subdir} | tr '/' '-'`-${timestamp}.tar.gz" 
+  aws_path=$(basename $file | tr -s '-' '/' | perl -pe 's/^eessi.//;')
+  upload_to_staging_bucket "${file}" "${aws_path}"
+done

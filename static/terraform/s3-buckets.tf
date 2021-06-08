@@ -123,7 +123,7 @@ resource "aws_s3_bucket" "log_bucket" {
   acl      = "log-delivery-write"
 
   tags = {
-    Name = "EESSI logging bucket",    
+    Name = "EESSI logging bucket",
   }
 
   lifecycle_rule {
@@ -174,6 +174,97 @@ data "aws_iam_policy_document" "admin_only" {
         "arn:aws:iam::341349732686:user/hjzilverberg",
         "arn:aws:iam::341349732686:user/bedroge"
        ]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "gentoo_snapshot_access" {
+  provider  = aws 
+
+  statement {
+    sid = "public-read"
+    effect = "Allow"
+    actions = [
+      "s3:ListBucket",
+      "s3:GetObject",
+      "s3:GetObjectVersion",
+    ]
+
+    resources = [
+      "arn:aws:s3:::eessi-gentoo-snapshot",
+      "arn:aws:s3:::eessi-gentoo-snapshot/*",
+    ]
+
+    principals {
+      type = "AWS"
+      identifiers = [ "*" ]
+    }
+  }
+
+  statement {
+    sid = "admin-access"
+    effect = "Allow"
+    actions = [ "s3:*" ]
+
+    resources = [
+      "arn:aws:s3:::eessi-gentoo-snapshot",
+      "arn:aws:s3:::eessi-gentoo-snapshot/*",
+    ]
+
+    principals {
+      type = "AWS"
+      identifiers = [
+        "arn:aws:iam::341349732686:user/tkvernes",
+        "arn:aws:iam::341349732686:user/khoste",
+        "arn:aws:iam::341349732686:user/hjzilverberg",
+        "arn:aws:iam::341349732686:user/bedroge"
+       ]
+    }
+  }
+}
+
+resource "aws_s3_bucket" "gentoo_snapshot_bucket" {
+  provider = aws 
+  bucket   = "eessi-gentoo-snapshot"
+  policy   = data.aws_iam_policy_document.gentoo_snapshot_access.json
+  acl      = "private"
+
+  tags = {
+    Name = "EESSI gentoo snapshot bucket",
+  }
+
+  versioning {
+    enabled = true
+  }
+
+  logging {
+    target_bucket = aws_s3_bucket.log_bucket.id
+    target_prefix = "gentoo-snapshot-log/"
+  }
+
+  lifecycle_rule {
+    id      = "layers"
+    enabled = true
+
+#    prefix = "/"
+
+    tags = {
+      rule      = "layers"
+      autoclean = "true"
+    }
+
+    transition {
+      days          = 90
+      storage_class = "STANDARD_IA" # or "ONEZONE_IA"
+    }
+
+    transition {
+      days          = 180
+      storage_class = "GLACIER"
+    }
+
+    expiration {
+      days = 365
     }
   }
 }

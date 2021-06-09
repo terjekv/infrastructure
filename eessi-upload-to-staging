@@ -14,7 +14,7 @@ function upload_to_staging_bucket
   date=$(date +"%a, %d %b %Y %T %z")
   content_type='application/x-compressed-tar'
 
-  acl="x-amz-acl:public-read"
+  acl="x-amz-acl:private"
   string="PUT\n\n${content_type}\n${date}\n${acl}\n/${bucket}/${path}"
   
   if ! [ -z "$AWS_ACCESS_KEY_ID" ]; then
@@ -23,18 +23,18 @@ function upload_to_staging_bucket
     aclstring="-H \"${acl}\""
   fi
 
-  if ! curl --silent -X PUT -T "$file" \
+  echo "Attempting to create: https://${bucket}.s3.amazonaws.com/${path}"
+  if type -a aws > /dev/null; then
+    aws s3 cp "$file" s3://${bucket}/${path}
+  else
+  curl -X PUT -T "$file" \
     -H "Host: ${bucket}.s3.amazonaws.com" \
     -H "Date: ${date}" \
     -H "Content-Type: ${content_type}" \
     $aclstring \
     $authstring \
-    "https://${bucket}.s3.amazonaws.com/${path}" > /dev/null; then
-	echo "https://${bucket}.s3.amazonaws.com/${path}"
-    else
-	echo "Permission denied."
-	exit 1
-    fi
+    "https://${bucket}.s3.amazonaws.com/${path}"
+  fi
 }
 
 # This needs expanding etc.

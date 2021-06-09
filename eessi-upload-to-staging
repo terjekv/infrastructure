@@ -25,7 +25,11 @@ function upload_to_staging_bucket
 
   echo "Attempting to create: https://${bucket}.s3.amazonaws.com/${path}"
   if type -a aws > /dev/null; then
-    aws s3 cp "$file" s3://${bucket}/${path}
+    OPTIONS=""
+    if [ -z "$AWS_ACCESS_KEY_ID"]; then
+      OPTIONS="--no-sign-request"
+    fi
+    aws ${OPTIONS} s3 cp "$file" s3://${bucket}/${path}
   else
   curl -X PUT -T "$file" \
     -H "Host: ${bucket}.s3.amazonaws.com" \

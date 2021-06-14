@@ -7,38 +7,9 @@ fi
 
 function upload_to_staging_bucket
 {
-  file=$1
-  path=$2
+  path=$1
   bucket='eessi-staging'
-  region='eu-west-1'
-  date=$(date +"%a, %d %b %Y %T %z")
-  content_type='application/x-compressed-tar'
-
-  acl="x-amz-acl:private"
-  string="PUT\n\n${content_type}\n${date}\n${acl}\n/${bucket}/${path}"
-  
-  if ! [ -z "$AWS_ACCESS_KEY_ID" ]; then
-    signature=$(echo -en "${string}" | openssl sha1 -hmac "${AWS_SECRET_ACCESS_KEY}" -binary | base64)
-    authstring="-H \"Authorization: AWS ${AWS_SECRET_ACCESS_KEY}:$signature\""
-    aclstring="-H \"${acl}\""
-  fi
-
-  echo "Attempting to create: https://${bucket}.s3.amazonaws.com/${path}"
-  if type -a aws > /dev/null; then
-    OPTIONS=""
-    if [ -z "$AWS_ACCESS_KEY_ID"]; then
-      OPTIONS="--no-sign-request"
-    fi
-    aws ${OPTIONS} s3 cp "$file" s3://${bucket}/${path}
-  else
-  curl -X PUT -T "$file" \
-    -H "Host: ${bucket}.s3.amazonaws.com" \
-    -H "Date: ${date}" \
-    -H "Content-Type: ${content_type}" \
-    $aclstring \
-    $authstring \
-    "https://${bucket}.s3.amazonaws.com/${path}"
-  fi
+  aws ${OPTIONS} s3 cp "$file" s3://${bucket}/${path}
 }
 
 # This needs expanding etc.
@@ -58,10 +29,10 @@ for file in "$*"; do
   if [[ -r "$file" && -f "$file" &&  -s "$file" ]]; then
     basefile=$( basename $file )
     if check_file_name $basefile; then
-      if tar tf "$file" > /dev/null; then
+      if tar tf "$file" | head -n1 > /dev/null; then
         aws_path=$(basename $file | tr -s '-' '/' | perl -pe 's/^eessi.//;')
         echo $aws_path
-        upload_to_staging_bucket "${file}" "${aws_path}"
+        upload_to_staging_bucket "${aws_path}"
       else
         echo "'$file' is not a tar file."
         exit 1

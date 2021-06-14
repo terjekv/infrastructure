@@ -77,6 +77,8 @@ def main():
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--create-node', dest='node_type',
                         help='Node type for the VM. (arch[:size][:provider]|instance_type)')
+    parser.add_argument('--node-storage', dest="node_storage",
+                        help='Root volume size for the node. 50GB is the recommended default.')
     parser.add_argument('--node-name', dest="node_name",
                         help='DNS name for the node.')
     parser.add_argument('--node-description', dest="node_description",
@@ -146,6 +148,9 @@ def main():
             "description": silly_name,
             "name": silly_name,
             "issuer": os.environ['LOGNAME'],
+            "terraform_directory": TERRAFORM_DIRECTORY,
+            "template_directory": os.getcwd() + '/' + TEMPLATE_DIRECTORY,
+            "storage": 50,
             "username": '',
             "userslack": '',
             "eol": datetime.datetime.now() + datetime.timedelta(days=7),

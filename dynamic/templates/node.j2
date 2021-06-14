@@ -6,7 +6,10 @@ resource "{{ provider }}_instance" "{{ name }}" {
   ami                    = data.aws_ami.aarch64.id
   {%- endif %}
   provider               = eessiaws
-  
+
+
+
+
   ipv6_address_count     = 1
 {%- endif %}
 
@@ -22,16 +25,37 @@ resource "{{ provider }}_instance" "{{ name }}" {
   monitoring             = true
 
   root_block_device {
-    volume_size = 50
+    volume_size = {{ storage }}
   }
 
   tags = {
     Issuer = "{{ issuer }}"
-    Name  = "{{ description }}"
+    Name  = "{{ name }}"
     User  = "{{ username }}"
     Slack = "{{ userslack }}"
     EOL = "{{ eol }}"
     Ephemeral = "True"
+  }
+
+  provisioner "file" {
+    destination = "/tmp/provision.sh"
+    content = templatefile("{{ template_directory }}/node_data.j2", {
+        issuer = "{{ issuer }}"
+        user = "{{ username }}"
+        slack_user = "{{ userslack }}"
+        node_name = "{{ name }}"
+        aws_access_key_id = aws_iam_access_key.{{ name }}.id
+        aws_secret_access_key = aws_iam_access_key.{{ name }}.secret
+    })
+  }
+
+  provisioner "remote-exec" {
+    inline = ["sh /tmp/provision.sh"]
+  }
+
+  connection {
+    host = self.public_ip
+    user = "eessi"
   }
 }
 
@@ -51,4 +75,53 @@ resource "aws_route53_record" "{{ name }}" {
   type     = "A"
   ttl      = "300"
   records  = [{{ provider}}_instance.{{ name }}.public_ip]
+}
+
+resource "aws_iam_user" "{{ name }}" {
+  provider = eessiaws
+
+  name = "node_user_{{ name }}"
+  path = "/generated/"
+
+  tags = {
+    Managed = "terraform"
+    Name = "IAM user for the node {{ name }}"
+  }
+}
+
+resource "aws_iam_user_policy" "{{ name }}" {
+  provider = eessiaws
+
+  name = "node_user_policy_{{ name }}"
+  user = aws_iam_user.{{ name }}.name
+
+  # Terraform's "jsonencode" function converts a
+  # Terraform expression result to valid JSON syntax.
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "s3:ListBucket",
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:GetBucketLocation",
+          "s3:PutObject",
+          "s3:PutObjectAcl",
+        ]
+        Effect = "Allow"
+        Resource = [
+          "arn:aws:s3:::eessi-staging",
+          "arn:aws:s3:::eessi-staging/*",
+        ]
+      },
+    ]
+  })
+}
+
+
+
+resource "aws_iam_access_key" "{{ name }}" {
+  provider = eessiaws
+  user = aws_iam_user.{{ name }}.name
 }

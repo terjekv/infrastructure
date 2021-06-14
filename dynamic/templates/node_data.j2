@@ -1,0 +1,23 @@
+#!/bin/bash
+
+cat << EOF > /tmp/.meta
+issuer: ${ issuer }
+user: ${ user }
+slack_user: ${ slack_user }
+EOF
+
+sudo mv /tmp/.meta /home/eessi/.meta
+
+sudo mkdir /home/eessi/.aws
+cat << EOF > /tmp/.credentials
+[default]
+aws_access_key_id = ${ aws_access_key_id }
+aws_secret_access_key = ${aws_secret_access_key }
+EOF
+sudo mv /tmp/.credentials /home/eessi/.aws/credentials
+
+sudo chown -R eessi:eessi /home/eessi/.meta /home/eessi/.aws
+sudo chmod 0700 /home/eessi/.aws
+sudo chmod -R 0600 /home/eessi/.meta /home/eessi/.aws/*
+
+sudo userdel -r ec2-user

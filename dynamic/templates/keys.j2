@@ -14,4 +14,9 @@ resource "aws_key_pair" "{{ deployer_id }}-keys" {
   tags = {
     Owner = "{{ deployer_id }}"
   }
+
+  lifecycle {
+    ignore_changes = all
+  }
+
 }

@@ -29,3 +29,8 @@ sudo chmod 0700 /home/eessi/.ssh
 sudo chown -R eessi:eessi /home/eessi/.ssh 
 
 sudo su -c "echo 'eessi ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/eessi"
+
+echo "Installing eessi software"
+# sudo mkdir /usr/local/bin
+sudo curl --silent -o /usr/local/bin/eessi-upload-to-staging https://raw.githubusercontent.com/EESSI/infrastructure/main/eessi-upload-to-staging
+sudo chmod a+rx /usr/local/bin/eessi-upload-to-staging

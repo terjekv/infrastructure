@@ -30,7 +30,8 @@ resource "{{ provider }}_instance" "{{ name }}" {
 
   tags = {
     Issuer = "{{ issuer }}"
-    Name  = "{{ name }}"
+    Name  = "{{ description }}"
+    DNS = "{{ name }}"
     User  = "{{ username }}"
     Slack = "{{ userslack }}"
     EOL = "{{ eol }}"

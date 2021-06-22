@@ -84,6 +84,7 @@ def required_environment_keys_are_set(keys):
 
     return True
 
+
 def main():
     parser = argparse.ArgumentParser(description='Modify dynamic EESSI infrastructure.',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -198,6 +199,7 @@ def main():
     else:
         parser.print_usage()
 
+
 def ensure_core_config():
     data = {
         "deployer_id": os.environ['LOGNAME'],
@@ -210,6 +212,7 @@ def ensure_core_config():
     create_file_from_template("core.j2", TERRAFORM_DIRECTORY + "/core.tf", data )
 #    create_file_from_template("s3-staging.j2", TERRAFORM_DIRECTORY + "/s3-staging.tf", data )
     create_file_from_template("provider_aws_eessi.j2", TERRAFORM_DIRECTORY + "/provider_aws_eessi.tf", data )
+
 
 def create_node(node, dryrun=False):
     nodedata = node['type'].split(':')
@@ -267,9 +270,11 @@ def create_node(node, dryrun=False):
     create_file_from_template("node.j2", nodefile, node)
     return nodefile
 
+
 def show_node(nodename):
     node = get_node(nodename)
     print(json.dumps(node, indent=4, sort_keys=True))
+
 
 def get_node(nodename):
     nodes = get_nodes()
@@ -278,6 +283,7 @@ def get_node(nodename):
             return node
 
     return
+
 
 def get_nodes():
     terraform_show = show_infrastructure()
@@ -297,6 +303,7 @@ def get_nodes():
             nodes.append(resource)
 
     return nodes
+
 
 def list_nodes():
     nodes = get_nodes()
@@ -331,6 +338,7 @@ def create_file_from_template(templatefile, targetfile, data):
     with open(targetfile, "w") as fh:
         fh.write(outputText)
 
+
 def execute(cmd,print_stdout=False):
     """
     Executes a command, prints stdout, raises error if it fails.
@@ -355,6 +363,7 @@ def execute(cmd,print_stdout=False):
 
     return stdout
 
+
 def get_hostfile():
     osfile = '/etc/hosts'
 
@@ -364,6 +373,7 @@ def get_hostfile():
                 return osfile
 
     return osfile
+
 
 def ensure_host_entry(hostname):
     """
@@ -392,6 +402,7 @@ def remove_host_entry(hostname):
     hosts.remove_all_matching(name=hostname)
     hosts.write()
 
+
 def ensure_terraform_is_initialized(directory='.terraform'):
     """
     Ensure that terraform is appropriately initialized.
@@ -403,11 +414,13 @@ def ensure_terraform_is_initialized(directory='.terraform'):
         output = execute(['terraform', 'init'], print_stdout=False)
 #        print(output)
 
+
 def plan_infrastructure():
     """
     Performs a 'terraform plan' on the current infrastructure.
     """
     return terraform('plan')
+
 
 def show_infrastructure():
     """
@@ -415,17 +428,20 @@ def show_infrastructure():
     """
     return terraform('show')
 
+
 def apply_infrastructure():
     """
     Performs a 'terraform apply' on the current infrastructure.
     """
     return terraform('apply')
 
+
 def destroy_infrastructure():
     """
     Performs a terraform destroy.
     """
     return terraform('destroy')
+
 
 def terraform(command):
     """
@@ -461,6 +477,7 @@ def terraform(command):
     else:
         error("Unexpected terraform command '{}'!".format(command))
 
+
 def is_valid_hostname(hostname):
     if len(hostname) > 255:
         return False
@@ -468,6 +485,7 @@ def is_valid_hostname(hostname):
         hostname = hostname[:-1] # strip exactly one dot from the right, if present
     allowed = re.compile("(?!-)[A-Z\d-]{1,63}(?<!-)$", re.IGNORECASE)
     return all(allowed.match(x) for x in hostname.split("."))
+
 
 main()
 

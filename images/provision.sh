@@ -1,6 +1,6 @@
 #!/bin/sh
 
-PACKAGELIST='singularity git awscli tmux screen'
+PACKAGELIST='ansible singularity git awscli tmux screen'
 
 echo "Installing EPEL..."
 sudo dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm

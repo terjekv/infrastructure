@@ -1,22 +1,24 @@
-variable "{{ deployer_id }}-keys" {
-  type = map
-
-  default = {
-    private = "~/.ssh/id_rsa.terraform"
-    public  = "~/.ssh/id_rsa.terraform.pub"
-  }
+variable "{{ deployer_id }}_key_name" {
+  default = "terraform_deployer_key"
 }
 
-resource "aws_key_pair" "{{ deployer_id }}-keys" {
+variable "{{ deployer_id }}_key_file" {
+  default = "/tmp/{{ deployer_id }}_terraform_.pem"
+}
+
+resource "tls_private_key" "{{ deployer_id }}_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+resource "aws_key_pair" "{{ deployer_id }}_generated_key" {
   provider   = eessiaws
-  key_name   = "{{ deployer_id }}-deployer-key"
-  public_key = file(var.{{ deployer_id }}-keys["public"])
-  tags = {
-    Owner = "{{ deployer_id }}"
-  }
+  key_name   = var.{{ deployer_id }}_key_name
+  public_key = tls_private_key.{{ deployer_id }}_key.public_key_openssh
+}
 
-  lifecycle {
-    ignore_changes = all
-  }
-
+resource "local_file" "pem_file" {
+  filename = var.{{ deployer_id }}_key_file
+  file_permission = "600"
+  sensitive_content = tls_private_key.{{ deployer_id }}_key.private_key_pem
 }

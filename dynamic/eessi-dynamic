@@ -39,6 +39,8 @@ AARCH64_NODE_TYPES = [
     "a1",
 ]
 
+VERBOSE_OUTPUT = False
+
 TERRAFORM_DIRECTORY = "/tmp/terraform"
 TEMPLATE_DIRECTORY = "./templates"
 
@@ -54,6 +56,17 @@ def error(string, exit_code=1):
     sys.stderr.write(string)
     sys.stderr.write("\n")
     sys.exit(exit_code)
+
+    
+def ensure_terraform_ssh_keys():
+    """
+    Ensure that ~/.ssh/id_rsa.terraform[.pub] exists.
+    """
+    filepath = "~/.ssh/id_rsa.terraform"
+    fullfilepath = os.path.expanduser(filepath)
+
+    if not os.path.exists(fullfilepath):
+        execute("ssh-keygen -t rsa  -f ~/.ssh/id_rsa.terraform -b 4096 -n ''")
 
 
 def required_environment_keys_are_set(keys):
@@ -101,6 +114,8 @@ def main():
                         help='Show details about a specific node.')
     parser.add_argument('--kill', dest="killnode",
                         help='Kill node.')
+    parser.add_argument('--verbose', dest="verbose",
+                        action="store_const", const=True, help='Be verbose. Very verbose.')
 
 #    parser.add_argument('--public', dest='public', action='store_const', const=True,
 #                        help='Public SSH access. Default is running host only.')
@@ -122,6 +137,10 @@ def main():
     args = parser.parse_args()
 
     dryrun = False
+
+    if args.verbose:
+        global VERBOSE_OUTPUT
+        VERBOSE_OUTPUT = True
 
     if not required_environment_keys_are_set(['AWS_SECRET_ACCESS_KEY', 'AWS_ACCESS_KEY_ID']):
         parser.print_help()
@@ -150,10 +169,11 @@ def main():
             "name": silly_name,
             "issuer": os.environ['LOGNAME'],
             "terraform_directory": TERRAFORM_DIRECTORY,
-            "template_directory": os.getcwd() + '/' + TEMPLATE_DIRECTORY,
+            "template_directory": TEMPLATE_DIRECTORY,
             "storage": 50,
             "username": '',
             "userslack": '',
+            "homedir": os.path.expanduser("~"),
             "eol": datetime.datetime.now() + datetime.timedelta(days=7),
             "aws": {
                 "region": AWS_REGION,
@@ -171,11 +191,13 @@ def main():
                         sys.exit(2)
                 node[argname] = getattr(args, arg)
 
-        create_node(node, dryrun=dryrun)
+        nodefile = create_node(node, dryrun=dryrun)
         if not args.dryrun:
             apply_infrastructure()
             list_nodes()
-        ensure_host_entry(node['name'])
+            ensure_host_entry(node['name'])
+        else:
+            print("Dry-run OK. Node defined in '{}'".format(nodefile))
     else:
         parser.print_usage()
 
@@ -190,8 +212,9 @@ def ensure_core_config():
 
     create_file_from_template("keys.j2", TERRAFORM_DIRECTORY + "/keys-" + os.environ['LOGNAME'] + ".tf", data)
     create_file_from_template("core.j2", TERRAFORM_DIRECTORY + "/core.tf", data)
-#    create_file_from_template("s3-staging.j2", TERRAFORM_DIRECTORY + "/s3-staging.tf", data )
+    # create_file_from_template("s3-staging.j2", TERRAFORM_DIRECTORY + "/s3-staging.tf", data )
     create_file_from_template("provider_aws_eessi.j2", TERRAFORM_DIRECTORY + "/provider_aws_eessi.tf", data)
+
 
 
 def create_node(node, dryrun=False):
@@ -246,30 +269,10 @@ def create_node(node, dryrun=False):
 
     print("Creating '{}'.".format(node['name']))
 
-    create_file_from_template("node.j2", TERRAFORM_DIRECTORY + "/" + node['name'].lower() + ".tf", node)
+    nodefile = TERRAFORM_DIRECTORY + "/" + node['name'].lower() + ".tf"
+    create_file_from_template("node.j2", nodefile, node)
+    return nodefile
 
-    # sys.exit(0)
-    # data = {
-    #     "deployer_id": "eessi-bot",
-
-    #     "aws": {
-    #         "region": AWS_REGION
-    #     },
-
-    #     "nodes": [
-    #         {
-    #         "provider_name": "aws",
-    #         "instance_name_clean": "terjekv-test",
-    #         "instance_name": "terjekv-test",
-    #         "architecture": "x86_64",
-    #         "instance_type": "t2.micro",
-    #         "instance_tag_owner": "terjekv",
-    #         "instance_tag_name": "[terjekv] testnode",
-    #         "instance_tag_user": "terjekv",
-    #         "instance_tag_slack": "@terjekv",
-    #         },
-    #     ],
-    # }
 
 
 def show_node(nodename):
@@ -322,7 +325,7 @@ def list_nodes():
 
     for node in nodes:
         val = node['values']
-#        print(json.dumps(resource, indent=4, sort_keys=True))
+        # print(json.dumps(resource, indent=4, sort_keys=True))
         eol = val['tags']['EOL'].split('.', 1)[0]
         table.add_row(node['name'], val['public_ip'], val['tags']['Name'], eol)
 
@@ -344,6 +347,9 @@ def execute(cmd, print_stdout=False):
     """
     Executes a command, prints stdout, raises error if it fails.
     """
+    if VERBOSE_OUTPUT:
+        print_stdout = True
+    
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
 
     return_code = process.wait()
@@ -367,7 +373,8 @@ def get_hostfile():
             if os.access(osfile, os.W_OK):
                 return osfile
 
-    return '/tmp/hosts'
+    return osfile
+
 
 
 def ensure_host_entry(hostname):
@@ -409,6 +416,7 @@ def ensure_terraform_is_initialized(directory='.terraform'):
         # print("Initializing terraform.")
         output = execute(['terraform', 'init'], print_stdout=False)
         # print(output)
+
 
 
 def plan_infrastructure():

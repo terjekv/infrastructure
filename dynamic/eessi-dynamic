@@ -39,6 +39,8 @@ AARCH64_NODE_TYPES = [
     "a1",
 ]
 
+VERBOSE_OUTPUT = False
+
 TERRAFORM_DIRECTORY = "/tmp/terraform"
 TEMPLATE_DIRECTORY = "./templates"
 
@@ -54,6 +56,18 @@ def error(string, exit_code=1):
     sys.stderr.write(string)
     sys.stderr.write("\n")
     sys.exit(exit_code)
+
+    
+def ensure_terraform_ssh_keys():
+    """
+    Ensure that ~/.ssh/id_rsa.terraform[.pub] exists.
+    """
+    filepath = "~/.ssh/id_rsa.terraform"
+    fullfilepath = os.path.expanduser(filepath)
+
+    if not os.path.exists(fullfilepath):
+        execute("ssh-keygen -t rsa  -f ~/.ssh/id_rsa.terraform -b 4096 -n ''")
+
 
 def required_environment_keys_are_set(keys):
     """
@@ -71,6 +85,7 @@ def required_environment_keys_are_set(keys):
         return False
 
     return True
+
 
 def main():
     parser = argparse.ArgumentParser(description='Modify dynamic EESSI infrastructure.',
@@ -96,9 +111,11 @@ def main():
     parser.add_argument('--list-nodes', dest='list',
                         action='store_const', const=True, help='List active nodes.')
     parser.add_argument('--show-node', dest='shownode',
-                        help='Show details about a specific node.' )
+                        help='Show details about a specific node.')
     parser.add_argument('--kill', dest="killnode",
                         help='Kill node.')
+    parser.add_argument('--verbose', dest="verbose",
+                        action="store_const", const=True, help='Be verbose. Very verbose.')
 
 #    parser.add_argument('--public', dest='public', action='store_const', const=True,
 #                        help='Public SSH access. Default is running host only.')
@@ -121,10 +138,13 @@ def main():
 
     dryrun = False
 
+    if args.verbose:
+        global VERBOSE_OUTPUT
+        VERBOSE_OUTPUT = True
+
     if not required_environment_keys_are_set(['AWS_SECRET_ACCESS_KEY', 'AWS_ACCESS_KEY_ID']):
         parser.print_help()
         sys.exit(1)
-
 
     ensure_core_config()
     if args.shownode:
@@ -149,10 +169,11 @@ def main():
             "name": silly_name,
             "issuer": os.environ['LOGNAME'],
             "terraform_directory": TERRAFORM_DIRECTORY,
-            "template_directory": os.getcwd() + '/' + TEMPLATE_DIRECTORY,
+            "template_directory": TEMPLATE_DIRECTORY,
             "storage": 50,
             "username": '',
             "userslack": '',
+            "homedir": os.path.expanduser("~"),
             "eol": datetime.datetime.now() + datetime.timedelta(days=7),
             "aws": {
                 "region": AWS_REGION,
@@ -166,17 +187,20 @@ def main():
                 val = getattr(args, arg)
                 if arg == "node_name":
                     if not is_valid_hostname(val):
-                        print("Invalid node name: '{}', must match '{}'".format(val, '(?!-)[a-z\d-]\{1,63\}(?<!-)$'))
+                        print("Invalid node name: '{}', must match '{}'".format(val, r'(?!-)[a-z\d-]\{1,63\}(?<!-)$'))
                         sys.exit(2)
                 node[argname] = getattr(args, arg)
 
-        create_node(node, dryrun=dryrun)
+        nodefile = create_node(node, dryrun=dryrun)
         if not args.dryrun:
             apply_infrastructure()
             list_nodes()
-        ensure_host_entry(node['name'])
+            ensure_host_entry(node['name'])
+        else:
+            print("Dry-run OK. Node defined in '{}'".format(nodefile))
     else:
         parser.print_usage()
+
 
 def ensure_core_config():
     data = {
@@ -186,10 +210,12 @@ def ensure_core_config():
             }
         }
 
-    create_file_from_template("keys.j2", TERRAFORM_DIRECTORY + "/keys-" + os.environ['LOGNAME'] + ".tf", data )
-    create_file_from_template("core.j2", TERRAFORM_DIRECTORY + "/core.tf", data )
-#    create_file_from_template("s3-staging.j2", TERRAFORM_DIRECTORY + "/s3-staging.tf", data )
-    create_file_from_template("provider_aws_eessi.j2", TERRAFORM_DIRECTORY + "/provider_aws_eessi.tf", data )
+    create_file_from_template("keys.j2", TERRAFORM_DIRECTORY + "/keys-" + os.environ['LOGNAME'] + ".tf", data)
+    create_file_from_template("core.j2", TERRAFORM_DIRECTORY + "/core.tf", data)
+    # create_file_from_template("s3-staging.j2", TERRAFORM_DIRECTORY + "/s3-staging.tf", data )
+    create_file_from_template("provider_aws_eessi.j2", TERRAFORM_DIRECTORY + "/provider_aws_eessi.tf", data)
+
+
 
 def create_node(node, dryrun=False):
     nodedata = node['type'].split(':')
@@ -225,7 +251,7 @@ def create_node(node, dryrun=False):
     elif len(nodedata) == 2:
         # We get arch and size, but no provider
         size = nodedata[1].lower()
-        if not size in IMAGE_X86_64:
+        if size not in IMAGE_X86_64:
             error("'{}' is not a valid size. Valid sizes are {}.".format(size, ', '.join(IMAGE_X86_64.keys())))
 
         node['provider'] = DEFAULT_PROVIDER
@@ -243,34 +269,16 @@ def create_node(node, dryrun=False):
 
     print("Creating '{}'.".format(node['name']))
 
-    create_file_from_template("node.j2", TERRAFORM_DIRECTORY + "/" + node['name'].lower() + ".tf", node)
+    nodefile = TERRAFORM_DIRECTORY + "/" + node['name'].lower() + ".tf"
+    create_file_from_template("node.j2", nodefile, node)
+    return nodefile
 
-    # sys.exit(0)
-    # data = {
-    #     "deployer_id": "eessi-bot",
 
-    #     "aws": {
-    #         "region": AWS_REGION
-    #     },
-
-    #     "nodes": [
-    #         {
-    #         "provider_name": "aws",
-    #         "instance_name_clean": "terjekv-test",
-    #         "instance_name": "terjekv-test",
-    #         "architecture": "x86_64",
-    #         "instance_type": "t2.micro",
-    #         "instance_tag_owner": "terjekv",
-    #         "instance_tag_name": "[terjekv] testnode",
-    #         "instance_tag_user": "terjekv",
-    #         "instance_tag_slack": "@terjekv",
-    #         },
-    #     ],
-    # }
 
 def show_node(nodename):
     node = get_node(nodename)
     print(json.dumps(node, indent=4, sort_keys=True))
+
 
 def get_node(nodename):
     nodes = get_nodes()
@@ -279,6 +287,7 @@ def get_node(nodename):
             return node
 
     return
+
 
 def get_nodes():
     terraform_show = show_infrastructure()
@@ -299,6 +308,7 @@ def get_nodes():
 
     return nodes
 
+
 def list_nodes():
     nodes = get_nodes()
     if not nodes:
@@ -315,7 +325,7 @@ def list_nodes():
 
     for node in nodes:
         val = node['values']
-#        print(json.dumps(resource, indent=4, sort_keys=True))
+        # print(json.dumps(resource, indent=4, sort_keys=True))
         eol = val['tags']['EOL'].split('.', 1)[0]
         table.add_row(node['name'], val['public_ip'], val['tags']['Name'], eol)
 
@@ -332,25 +342,28 @@ def create_file_from_template(templatefile, targetfile, data):
     with open(targetfile, "w") as fh:
         fh.write(outputText)
 
-def execute(cmd,print_stdout=False):
+
+def execute(cmd, print_stdout=False):
     """
     Executes a command, prints stdout, raises error if it fails.
     """
-    process = subprocess.Popen(cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        universal_newlines=True)
+    if VERBOSE_OUTPUT:
+        print_stdout = True
+    
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
 
     return_code = process.wait()
-    (stdout,stderr) = process.communicate()
+    (stdout, stderr) = process.communicate()
 
     if print_stdout:
         print(stdout)
     if return_code:
+        print(stdout)
         print(stderr)
         raise subprocess.CalledProcessError(return_code, cmd)
 
     return stdout
+
 
 def get_hostfile():
     osfile = '/etc/hosts'
@@ -360,7 +373,9 @@ def get_hostfile():
             if os.access(osfile, os.W_OK):
                 return osfile
 
-    return '/tmp/hosts'
+    return osfile
+
+
 
 def ensure_host_entry(hostname):
     """
@@ -376,6 +391,7 @@ def ensure_host_entry(hostname):
     hosts.add([new_entry])
     hosts.write()
 
+
 def remove_host_entry(hostname):
     """
     Ensure that a host entry for the node is found in /etc/hosts.
@@ -389,6 +405,7 @@ def remove_host_entry(hostname):
     hosts.remove_all_matching(name=hostname)
     hosts.write()
 
+
 def ensure_terraform_is_initialized(directory='.terraform'):
     """
     Ensure that terraform is appropriately initialized.
@@ -396,9 +413,11 @@ def ensure_terraform_is_initialized(directory='.terraform'):
     os.chdir(TERRAFORM_DIRECTORY)
 
     if not os.path.isdir(directory):
-#        print("Initializing terraform.")
+        # print("Initializing terraform.")
         output = execute(['terraform', 'init'], print_stdout=False)
-#        print(output)
+        # print(output)
+
+
 
 def plan_infrastructure():
     """
@@ -406,11 +425,13 @@ def plan_infrastructure():
     """
     return terraform('plan')
 
+
 def show_infrastructure():
     """
     Performs a 'terraform show' on the current infrastructure.
     """
     return terraform('show')
+
 
 def apply_infrastructure():
     """
@@ -418,23 +439,25 @@ def apply_infrastructure():
     """
     return terraform('apply')
 
+
 def destroy_infrastructure():
     """
     Performs a terraform destroy.
     """
     return terraform('destroy')
 
+
 def terraform(command):
     """
     Executes an appropriate terraform command based on the current infrastructure.
     """
     command = command.lower()
-    if not command in [ 'plan', 'apply', 'destroy', 'show', 'refresh' ]:
+    if command not in ['plan', 'apply', 'destroy', 'show', 'refresh']:
         error("Unknown terraform command '{}'!".format(command))
 
     # Before we do anything else, do a refresh.
     if command != 'refresh':
-#        print("Doing a refresh")
+        # print("Doing a refresh")
         execute(['terraform', 'refresh'])
 
     if command == 'destroy':
@@ -445,18 +468,19 @@ def terraform(command):
     ensure_terraform_is_initialized()
 
     if command == 'apply':
-#        print("Applying state, please wait...")
+        # print("Applying state, please wait...")
         return execute(['terraform', command, '-auto-approve'], print_stdout=False)
     elif command == 'plan':
-#        print("Planning state, please wait...")
+        # print("Planning state, please wait...")
         return execute(['terraform', command], print_stdout=False)
     elif command == 'show':
-#        print("Retriving state, please wait...")
+        # print("Retriving state, please wait...")
         return execute(['terraform', command, '-json'], print_stdout=False)
     elif command == 'refresh':
         return execute(['terraform', command], print_stdout=False)
     else:
         error("Unexpected terraform command '{}'!".format(command))
+
 
 def is_valid_hostname(hostname):
     if len(hostname) > 255:
@@ -466,5 +490,5 @@ def is_valid_hostname(hostname):
     allowed = re.compile("(?!-)[A-Z\d-]{1,63}(?<!-)$", re.IGNORECASE)
     return all(allowed.match(x) for x in hostname.split("."))
 
-main()
 
+main()

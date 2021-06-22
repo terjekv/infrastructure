@@ -22,10 +22,11 @@ source "amazon-ebs" "aws_x86_64" {
   region        = var.region
   source_ami_filter {
     filters = {
-      name                = "RHEL-8*x86_64-*"
+      name                = "RHEL-8*HVM-20*x86_64-*"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
+
     most_recent = true
     owners      = ["309956199498"]
   }
@@ -44,7 +45,7 @@ source "amazon-ebs" "aws_aarch64" {
   region        = var.region
   source_ami_filter {
     filters = {
-      name                = "RHEL-8*arm64-*"
+      name                = "RHEL-8*HVM-20*arm64-*"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }

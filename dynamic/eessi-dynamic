@@ -343,17 +343,6 @@ def create_file_from_template(templatefile, targetfile, data):
         fh.write(outputText)
 
 
-def execute(cmd,print_stdout=False):
-    """
-    Executes a command, prints stdout, raises error if it fails.
-    """
-
-    process = subprocess.Popen(cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        universal_newlines=True)
-
-
 def execute(cmd, print_stdout=False):
     """
     Executes a command, prints stdout, raises error if it fails.
@@ -501,7 +490,5 @@ def is_valid_hostname(hostname):
     allowed = re.compile("(?!-)[A-Z\d-]{1,63}(?<!-)$", re.IGNORECASE)
     return all(allowed.match(x) for x in hostname.split("."))
 
-
-main
 
 main()

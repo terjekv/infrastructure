@@ -57,17 +57,6 @@ def error(string, exit_code=1):
     sys.stderr.write("\n")
     sys.exit(exit_code)
 
-    
-def ensure_terraform_ssh_keys():
-    """
-    Ensure that ~/.ssh/id_rsa.terraform[.pub] exists.
-    """
-    filepath = "~/.ssh/id_rsa.terraform"
-    fullfilepath = os.path.expanduser(filepath)
-
-    if not os.path.exists(fullfilepath):
-        execute("ssh-keygen -t rsa  -f ~/.ssh/id_rsa.terraform -b 4096 -n ''")
-
 
 def required_environment_keys_are_set(keys):
     """

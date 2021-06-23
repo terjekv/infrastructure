@@ -14,6 +14,11 @@ for package in $PACKAGELIST; do
     sudo dnf -y install $package
 done
 
+# This only supports x86_64 and ARM:
+# https://github.com/cli/cli/blob/trunk/docs/install_linux.md
+sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+sudo dnf -y install gh
+
 echo "Performing system upgrade..."
 sudo dnf -y upgrade
 

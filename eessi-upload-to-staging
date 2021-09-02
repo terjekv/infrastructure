@@ -39,9 +39,10 @@ function create_metadata_file
     --arg sz "$(du -b "${file}" | awk '{print $1}')" \
     --arg ct "$(date -r "${file}")" \
     --arg sha256 "$(sha256sum "${file}" | awk '{print $1}')" \
+    --arg url "https://${bucket}.s3.amazonaws.com/${aws_path}/${aws_file}" \
     '{
        uploader: {username: $un, ip: $ip, hostname: $hn},
-       payload: {filename: $fn, size: $sz, ctime: $ct, sha256sum: $sha256},
+       payload: {filename: $fn, size: $sz, ctime: $ct, sha256sum: $sha256, url: $url},
      }' > "${tmpfile}"
 
   echo "${tmpfile}"
@@ -57,7 +58,7 @@ for file in "$*"; do
         aws_file=$(basename $file)
         echo "Creating metadata file"
         metadata_file=$(create_metadata_file "${file}")
-        echo Creating "http://${bucket}.s3.amazonaws.com/${aws_path}/${aws_file}"
+        echo Creating "https://${bucket}.s3.amazonaws.com/${aws_path}/${aws_file}"
         upload_to_staging_bucket "${file}" "${aws_path}/${aws_file}"
         upload_to_staging_bucket "${metadata_file}" "${aws_path}/${aws_file}.meta.txt"
       else

@@ -9,7 +9,8 @@ fi
 
 function upload_to_staging_bucket
 {
-  path=$1
+  file=$1
+  path=$2
   aws ${OPTIONS} s3 cp "$file" s3://${bucket}/${path}
 }
 
@@ -25,16 +26,41 @@ function check_file_name
   fi
 }
 
+function create_metadata_file
+{
+  tarball=$1
+  tmpfile=$(mktemp)
+
+  jq -n \
+    --arg un $(whoami) \
+    --arg ip $(curl -s https://checkip.amazonaws.com) \
+    --arg hn "$(hostname -f)" \
+    --arg fn "$(basename $tarball)" \
+    --arg sz "$(du -b "${file}" | awk '{print $1}')" \
+    --arg ct "$(date -r "${file}")" \
+    --arg sha256 "$(sha256sum "${file}" | awk '{print $1}')" \
+    --arg url "https://${bucket}.s3.amazonaws.com/${aws_path}/${aws_file}" \
+    '{
+       uploader: {username: $un, ip: $ip, hostname: $hn},
+       payload: {filename: $fn, size: $sz, ctime: $ct, sha256sum: $sha256, url: $url},
+     }' > "${tmpfile}"
+
+  echo "${tmpfile}"
+}
+
 for file in "$*"; do
-  # eessi-${pilot_version}-software-${os}-`echo ${cpu_arch_subdir} | tr '/' '-'`-${timestamp}.tar.gz" 
+  # eessi-${pilot_version}-software-${os}-`echo ${cpu_arch_subdir} | tr '/' '-'`-${timestamp}.tar.gz"
   if [[ -r "$file" && -f "$file" &&  -s "$file" ]]; then
     basefile=$( basename $file )
     if check_file_name $basefile; then
       if tar tf "$file" | head -n1 > /dev/null; then
         aws_path=$(basename $file | tr -s '-' '/' | perl -pe 's/^eessi.//;' | perl -pe 's/\.tar\.gz$//;' )
         aws_file=$(basename $file)
-        echo Creating "http://${bucket}.s3.amazonaws.com/${aws_path}/${aws_file}"
-        upload_to_staging_bucket "${aws_path}/${aws_file}"
+        echo "Creating metadata file"
+        metadata_file=$(create_metadata_file "${file}")
+        echo Creating "https://${bucket}.s3.amazonaws.com/${aws_path}/${aws_file}"
+        upload_to_staging_bucket "${file}" "${aws_path}/${aws_file}"
+        upload_to_staging_bucket "${metadata_file}" "${aws_path}/${aws_file}.meta.txt"
       else
         echo "'$file' is not a tar file."
         exit 1

@@ -33,6 +33,7 @@ IMAGE_AARCH64 = {
 }
 
 AARCH64_NODE_TYPES = [
+    "c6gn",
     "c6g",
     "t4g",
     "m6g",

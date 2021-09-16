@@ -1,7 +1,7 @@
 # Stratum 0
 resource "aws_route53_record" "stratum0_rug" {
   zone_id = var.aws_route53_infra_zoneid
-  name    = "rug-nl.cvmfs.stratum0.eessi-infra.org"
+  name    = "rug-nl.stratum0.cvmfs.eessi-infra.org"
   type    = "A"
   ttl     = "300"
   records = [ "129.125.60.179" ]
@@ -21,7 +21,7 @@ resource "aws_route53_record" "stratum0_cname" {
 # Contacts: @bedroge
 resource "aws_route53_record" "stratum1_rug" {
   zone_id = var.aws_route53_infra_zoneid
-  name    = "rug-nl.cvmfs.stratum1.eessi-infra.org"
+  name    = "rug-nl.stratum1.cvmfs.eessi-infra.org"
   type    = "A"
   ttl     = "300"
   records = [ "129.125.55.102" ]
@@ -32,7 +32,7 @@ resource "aws_route53_record" "stratum1_rug" {
 # Contacts: @rungitta, @terjekv
 resource "aws_route53_record" "stratum1_bgo" {
   zone_id = var.aws_route53_infra_zoneid
-  name    = "bgo-no.cvmfs.stratum1.eessi-infra.org"
+  name    = "bgo-no.stratum1.cvmfs.eessi-infra.org"
   type    = "A"
   ttl     = "300"
   records = [ "158.39.77.95" ]
@@ -42,7 +42,7 @@ resource "aws_route53_record" "stratum1_bgo" {
 # Contacts: @bedroge
 resource "aws_route53_record" "stratum1_azure_us_east1" {
   zone_id = var.aws_route53_infra_zoneid
-  name    = "azure-us-east1.cvmfs.stratum1.eessi-infra.org"
+  name    = "azure-us-east1.stratum1.cvmfs.eessi-infra.org"
   type    = "A"
   ttl     = "300"
   records = [ "40.71.46.52" ]
@@ -52,7 +52,7 @@ resource "aws_route53_record" "stratum1_azure_us_east1" {
 # Contacts: @bedroge
 resource "aws_route53_record" "stratum1_aws_eu_west1" {
   zone_id = var.aws_route53_infra_zoneid
-  name    = "aws-eu-west1.cvmfs.stratum1.eessi-infra.org"
+  name    = "aws-eu-west1.stratum1.cvmfs.eessi-infra.org"
   type    = "A"
   ttl     = "300"
   records = [aws_eip.stratum1_eu_west.public_ip]

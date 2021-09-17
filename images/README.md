@@ -6,6 +6,8 @@
 
 # To build?
 
+Set the environment variable EESSI_SSH_KEYS to include all the keys that the EESSI account should have access to, and then...
+
 ```
 packer build default.ami.pkr.hcl
 ```

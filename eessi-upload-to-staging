@@ -19,7 +19,7 @@ function check_file_name
 {
   filename=$1
   if ( echo $filename | grep ^eessi > /dev/null && 
-    echo $filename | grep -E '(compat|software)' > /dev/null ); then
+    echo $filename | grep -E '(compat|init|software)' > /dev/null ); then
     return 0
   else
     return 1

@@ -29,6 +29,6 @@ packages:
   - httpd
 
 runcmd:
-  # - curl -O -L --quiet
+  - curl -O -L --quiet https://raw.githubusercontent.com/terjekv/infrastructure/reposerver/static/cloud-init/create_rpm_and_deb_repos.sh
   - systemctl enable httpd
   - systemctl start httpd

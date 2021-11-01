@@ -57,13 +57,8 @@ if ! aptly repo show eessi 2>&1 > /dev/null; then
     aptly repo create -distribution=sid -component=main eessi
 fi
 aptly repo add eessi $TMPDIR
+aptly publish repo -architectures="all" eessi 2&>1 > /dev/null || aptly publish update sid > /dev/null
 
-if ! aptly repo show eessi 2>&1 > /dev/null;
-then
-    aptly publish repo -architectures="all" eessi > /dev/null
-else
-    aptly publish update sid > /dev/null
-fi
 cp -ua /root/.aptly/public  /var/www/html/eessi/deb
 
-# rm -rf $TMPDIR
+rm -rf $TMPDIR

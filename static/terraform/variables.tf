@@ -47,3 +47,7 @@ variable "instance_monitoring" {
 variable "instance_login" {
     default = "t4g.micro"
 }
+
+variable "instance_repo" {
+    default = "t3.medium"
+}

@@ -18,6 +18,10 @@ output "monitoring_node_eip" {
   value       = aws_eip.monitoring_node.*.public_dns
 }
 
+output "repo_node_eip" {
+  value       = aws_eip.repo_node.*.public_dns
+}
+
 output "staging_bucket_url" {
   value       = aws_s3_bucket.staging_bucket.bucket_domain_name
 }

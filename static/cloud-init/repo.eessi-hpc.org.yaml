@@ -29,7 +29,7 @@ packages:
   - httpd
 
 runcmd:
-  - curl -o /etc/cron.hourly/repo-update -L --quiet https://raw.githubusercontent.com/terjekv/infrastructure/reposerver/static/cloud-init/create_rpm_and_deb_repos.sh
+  - curl -o /etc/cron.hourly/repo-update -L https://raw.githubusercontent.com/terjekv/infrastructure/reposerver/static/cloud-init/create_rpm_and_deb_repos.sh
   - chmod a+rx /etc/cron.hourly/repo-update
   - semanage fcontext -a -e /etc/cron.hourly/0anacron /etc/cron.hourly/repo-update
   - restorecon -vvRF /etc/cron.hourly/repo-update

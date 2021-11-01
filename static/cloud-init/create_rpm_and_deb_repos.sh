@@ -27,9 +27,9 @@ yum -y --quiet install createrepo
 [ -d /usr/local/bin ] || mkdir -p /usr/local/bin
 if ! [ -f /usr/local/bin/aptly ]; then
     curl -L -O --silent $APTLY
-    tar xzf aptly_1.4.0_linux_amd64.tar.gz
-    cp aptly_1.4.0_linux_amd64/aptly /usr/local/bin
-    rm -rf aptly*
+    tar xzf /usr/local/bin/aptly_1.4.0_linux_amd64.tar.gz
+    cp /usr/local/bin/aptly_1.4.0_linux_amd64/aptly /usr/local/bin
+    rm -rf /usr/local/bin/aptly*
 fi
 
 mkdir packages;
@@ -53,11 +53,11 @@ for arch in $ARCHS; do
 done
 
 # Create debian repo
-if ! aptly repo show eessi 2>&1 > /dev/null; then
-    aptly repo create -distribution=sid -component=main eessi
+if ! /usr/local/bin/aptly repo show eessi 2>&1 > /dev/null; then
+    /usr/local/bin/aptly repo create -distribution=sid -component=main eessi
 fi
 aptly repo add eessi $TMPDIR
-aptly publish repo -skip-signing -architectures="all" eessi 2&>1 > /dev/null || aptly publish repo -skip-signing -architectures="all" eessi sid > /dev/null
+aptly publish repo -skip-signing -architectures="all" eessi 2&>1 > /dev/null || /usr/local/bin/aptly publish repo -skip-signing -architectures="all" eessi sid > /dev/null
 
 cp -ua /root/.aptly/public  /var/www/html/eessi/deb
 

@@ -57,7 +57,7 @@ if ! /usr/local/bin/aptly repo show eessi 2>&1 > /dev/null; then
     /usr/local/bin/aptly repo create -distribution=sid -component=main eessi
 fi
 aptly repo add eessi $TMPDIR
-aptly publish repo -skip-signing -architectures="all" eessi 2&>1 > /dev/null || /usr/local/bin/aptly publish repo -skip-signing -architectures="all" eessi sid > /dev/null
+aptly publish repo -skip-signing -architectures="all" eessi 2>&1 > /dev/null || /usr/local/bin/aptly publish repo -skip-signing -architectures="all" eessi sid > /dev/null
 
 cp -ua /root/.aptly/public  /var/www/html/eessi/deb
 

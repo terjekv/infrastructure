@@ -15,9 +15,9 @@ resource "aws_instance" "repo_node" {
     volume_size = 20
   }
 
-#  lifecycle {
-#    ignore_changes = [ami, user_data]
-#  }
+  lifecycle {
+    ignore_changes = [ami, user_data]
+  }
 
   tags = {
 #    Owner = var.localuser

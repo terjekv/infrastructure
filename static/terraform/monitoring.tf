@@ -24,6 +24,7 @@ resource "aws_instance" "monitoring_node" {
   tags = {
 #    Owner = var.localuser
     Name = "[CORE] monitoring.infra.eessi-hpc.org"
+    Snapshot = "true"
   }
 }
 

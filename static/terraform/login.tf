@@ -24,6 +24,7 @@ resource "aws_instance" "login_node" {
   tags = {
 #    Owner = var.localuser
     Name = "[CORE] login.eessi-hpc.org"
+    Snapshot = "true"
   }
 }
 

@@ -23,6 +23,7 @@ resource "aws_instance" "stratum1_eu_west" {
   tags = {
 #    Owner = var.localuser
     Name = "[CORE] stratum1-eu-west.eessi-hpc.org"
+    Snapshot = "true"
   }
 }
 

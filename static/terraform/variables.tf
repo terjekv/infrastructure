@@ -51,3 +51,7 @@ variable "instance_login" {
 variable "instance_repo" {
     default = "t3.medium"
 }
+
+variable "instance_terraform" {
+    default = "t3.large"
+}

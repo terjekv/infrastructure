@@ -22,6 +22,10 @@ output "repo_node_eip" {
   value       = aws_eip.repo_node.*.public_dns
 }
 
+output "atlantis_node_dns" {
+  value       = aws_eip.atlantis_node.*.public_dns
+}
+
 output "staging_bucket_url" {
   value       = aws_s3_bucket.staging_bucket.bucket_domain_name
 }

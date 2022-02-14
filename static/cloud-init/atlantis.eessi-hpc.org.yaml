@@ -1,0 +1,40 @@
+#cloud-config
+
+# Cloud-init for atalantis.eessi-hpc.org
+
+hostname: atlantis.eessi-hpc.org
+
+yum_repos:
+    epel-release:
+        baseurl: https://download.fedoraproject.org/pub/epel/$releasever/Everything/$basearch
+        metalink: https://mirrors.fedoraproject.org/metalink?repo=epel-$releasever&arch=$basearch&infra=$infra&content=$contentdir
+        enabled: true
+        failovermethod: priority
+        gpgcheck: true
+        gpgkey: http://download.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8
+        name: Extra Packages for Enterprise Linux 8 - Release
+    hashicorp:
+        baseurl: https://rpm.releases.hashicorp.com/RHEL/$releasever/$basearch/stable
+        enabled: true
+        gpgcheck: true
+        gpgkey: https://rpm.releases.hashicorp.com/gpg
+        name: Packages from Hashicorp (terraform and friends)
+
+package_upgrade: true
+
+packages:
+  - ansible
+  - awscli
+  - terraform
+  - htop
+  - podman
+  # required for semanage
+  - policycoreutils-python-utils
+  - python38
+  - screen
+  - singularity
+  - tmux
+
+# From where do we copy permissions? Need to look at sealert.
+#runcmd:
+#  - semanage fcontext -a -e /var /persistent
